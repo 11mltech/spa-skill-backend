@@ -17,6 +17,7 @@ import math
 import random
 import uuid
 import logging
+import requests
 import datetime
 from datetime import datetime, timezone
 
@@ -29,6 +30,7 @@ def lambda_handler(request, context):
     print('lambda_handler request  -----')
     print(json.dumps(request))
 
+    server = DeviceCloud()
 
     if context is not None:
         print('lambda_handler context  -----')
@@ -71,22 +73,16 @@ def lambda_handler(request, context):
             discovery_response = AlexaResponse(namespace='Alexa.Discovery', name='Discover.Response')
             # Create the response and add the light bulb capabilities.
             capability_alexa = discovery_response.create_payload_endpoint_capability()
-            capability_alexa_thermostatcontroller = discovery_response.create_payload_endpoint_capability(
-                interface='Alexa.ThermostatController',
-                supported=[{'name': 'temperatureState'}])
-            capability_alexa_jetcontroller = discovery_response.create_payload_endpoint_capability(
+            capability_alexa_powercontroller = discovery_response.create_payload_endpoint_capability(
                 interface='Alexa.PowerController',
-                supported=[{'name': 'jetState'}])
-            capability_alexa_lightcontroller = discovery_response.create_payload_endpoint_capability(
-                interface='Alexa.PowerController',
-                supported=[{'name': 'lightState'}])
+                supported=[{'name': 'powerState'}])
             capability_alexa_endpointhealth = discovery_response.create_payload_endpoint_capability(
                 interface='Alexa.EndpointHealth',
                 supported=[{'name': 'connectivity'}])
             discovery_response.add_payload_endpoint(
-                friendly_name='SmarTouch Spa',
-                endpoint_id='smartouch-spa',
-                capabilities=[capability_alexa, capability_alexa_endpointhealth, capability_alexa_powercontroller, capability_alexa_thermostatcontroller])
+                friendly_name='Sample Light Bulb',
+                endpoint_id='sample-bulb-01',
+                capabilities=[capability_alexa, capability_alexa_endpointhealth, capability_alexa_powercontroller])
             return send_response(discovery_response.get())
 
     if namespace == 'Alexa.PowerController':
@@ -105,47 +101,28 @@ def lambda_handler(request, context):
 
         directive_response = AlexaResponse(correlation_token=correlation_token)
         directive_response.add_context_property(namespace='Alexa.PowerController', name='powerState', value=power_state_value)
-        logging.info("lightswitch changed")
         return send_response(directive_response.get())
-
-    if namespace == 'Alexa.ThermostatController':
-        # The directive to control the spa.
-        # Note: This example code always returns a success response.
-        endpoint_id = request['directive']['endpoint']['endpointId']
-        target_temp = request['payload']['targetSetpoint']['value']
-        temp_scale = request['payload']['targetSetpoint']['scale']
-        correlation_token = request['directive']['header']['correlationToken']
-
-        # Check for valid setpoint range for temperature
-        if target_temp not in range(18,30):
-            return AlexaResponse(
-                    name='ErrorResponse',
-                    payload={'type': 'INVALID_TEMP', 'message': 'Target temperature not in range'}).get()
-
-        # Check for an error when setting the state.
-        device_set = update_device_state(endpoint_id=endpoint_id, state='target_temp', value=request['payload']['targetSetpoint'])
-        if not device_set:
-            return AlexaResponse(
-                name='ErrorResponse',
-                payload={'type': 'ENDPOINT_UNREACHABLE', 'message': 'Unable to reach endpoint database.'}).get()
-
-
-        directive_response = AlexaResponse(correlation_token=correlation_token)
-        directive_response.add_context_property(namespace='Alexa.ThermostatController', name='powerState', value=request['payload']['targetSetpoint'])
-        logging.info("target temperature set")
-        return send_response(directive_response.get())
-        
-    alexa_response = AlexaResponse(
-            name='ErrorResponse',
-            payload={'type': 'UNSUPPORTED_DIRECTIVE',
-                     'message': 'This directive is currently not being supported by this function'})
-    return send_response(alexa_response.get())
 
 # Send the response
 def send_response(response):
     print('lambda_handler response -----')
     print(json.dumps(response))
     return response
+
+class DeviceCloud:
+
+    def __init__(self, **kwargs):
+        self.address = kwargs.get('address', 'https://milonet.duckdns.org')
+        self.endpoints = {
+            "verify": "spa-auth/verify"
+        }
+
+    # Check if user exists in server, using accessToken provided by directive
+    def verify_user(self, **kwargs):
+        url = self.address + self.endpoints['verify']
+        response = requests.get(url, params={'accessToken': kwargs.get('accessToken', '')})
+        logger.info(f'GET {url} response status code: {response.status_code}')
+        return response.ok
 
 # Make the call to your device cloud for control
 def update_device_state(endpoint_id, state, value):
@@ -231,11 +208,11 @@ class AlexaResponse:
 
         endpoint = {
             'capabilities': kwargs.get('capabilities', []),
-            'description': kwargs.get('description', 'Smart Home Tutorial: Virtual smart light bulb'),
+            'description': kwargs.get('description', 'spa controller application'),
             'displayCategories': kwargs.get('display_categories', ['THERMOSTAT']),
             'endpointId': kwargs.get('endpoint_id', 'endpoint_' + "%0.6d" % random.randint(0, 999999)),
-            'friendlyName': kwargs.get('friendly_name', 'Sample light'),
-            'manufacturerName': kwargs.get('manufacturer_name', 'Sample Manufacturer')
+            'friendlyName': kwargs.get('friendly_name', 'wes-spa'),
+            'manufacturerName': kwargs.get('manufacturer_name', 'Whole Electronic Solutions')
         }
 
         endpoint['additionalAttributes'] = kwargs.get('additionalAttributes', additionalAttributes)
