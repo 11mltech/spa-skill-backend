@@ -1,3 +1,6 @@
+import uuid
+import random
+
 class AlexaResponse:
 
     def __init__(self, **kwargs):
@@ -11,7 +14,7 @@ class AlexaResponse:
             'header': {
                 'namespace': kwargs.get('namespace', 'Alexa'),
                 'name': kwargs.get('name', 'Response'),
-                'messageId': str(uuid.uuid4()),
+                'messageId': kwargs.get('messageId', str(uuid.uuid4())),
                 'payloadVersion': kwargs.get('payload_version', '3')
             },
             'endpoint': {

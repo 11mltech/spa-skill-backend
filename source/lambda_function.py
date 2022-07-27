@@ -13,10 +13,7 @@
 
 
 import json
-import math
-import random
 from urllib import response
-import uuid
 import logging
 import datetime
 import urllib.request
@@ -25,7 +22,7 @@ from urllib.error import HTTPError
 from datetime import datetime, timezone
 
 # local modules
-import alexa_response
+from lib.alexa_response import AlexaResponse
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -40,8 +37,8 @@ endpoint_id = "device_id"
 def lambda_handler(request, context):
 
     # Dump the request for logging - check the CloudWatch logs.
-    print('lambda_handler request  -----')
-    print(json.dumps(request))
+    logging.INFO('lambda_handler request  -----')
+    logging.INFO(json.dumps(request))
 
     server = DeviceCloud()
 
@@ -80,7 +77,7 @@ def lambda_handler(request, context):
                                 payload=response['event']['payload'])
             return send_response(auth_response.get())
 
-    if namespace == 'Alexa.Discovery':
+    elif namespace == 'Alexa.Discovery':
         if name == 'Discover':
             # The request to discover the devices the skill controls.
             discovery_response = AlexaResponse(namespace='Alexa.Discovery', name='Discover.Response')
@@ -104,7 +101,7 @@ def lambda_handler(request, context):
                               capability_alexa_endpointhealth,])
             return send_response(discovery_response.get())
 
-    if namespace == 'Alexa.PowerController':
+    elif namespace == 'Alexa.PowerController':
         # The directive to TurnOff or TurnOn the light bulb.
         # Note: This example code always returns a success response.
         endpoint_id = request['directive']['endpoint']['endpointId']
@@ -121,6 +118,18 @@ def lambda_handler(request, context):
         directive_response = AlexaResponse(correlation_token=correlation_token)
         directive_response.add_context_property(namespace='Alexa.PowerController', name='powerState', value=power_state_value)
         return send_response(directive_response.get())
+
+    elif namespace == 'Alexa.ToggleController':
+        return AlexaResponse(
+            name='ErrorResponse',
+            messageId='1234',
+            payload={'type': 'TOGGLE_ERROR', 'message': 'ToggleController is not implemented in handler.'}).get()
+    else:
+        return AlexaResponse(
+            name='ErrorResponse',
+            messageId='1234',
+            payload={'type': 'INTERFACE_NOT_IMPLEMENTED', 'message': 'The interface namespace declared in directive is not implemented in handler.'}).get()
+
 
 # Send the response
 def send_response(response):
