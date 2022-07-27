@@ -1,9 +1,5 @@
 import unittest
-import lib
-
-import source
 from source import lambda_function
-from lib import alexa_response
 
 
 class TestHandler(unittest.TestCase):
