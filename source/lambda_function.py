@@ -37,8 +37,8 @@ endpoint_id = "device_id"
 def lambda_handler(request, context):
 
     # Dump the request for logging - check the CloudWatch logs.
-    logging.INFO('lambda_handler request  -----')
-    logging.INFO(json.dumps(request))
+    logger.info('lambda_handler request  -----')
+    logger.info(json.dumps(request))
 
     server = DeviceCloud()
 

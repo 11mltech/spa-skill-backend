@@ -12,3 +12,8 @@ Interfaces:
     
     Se debe ubicar el token dentro del payload de la directiva y usarlo para negociar con el servidor web. En caso de no tener token se debe enviar un codigo de autorizacion. 
     - Discovery:
+
+
+
+Run tests:
+    Standing in parent dir, run '''python -m unittest test.test_lambda_function.py'''
