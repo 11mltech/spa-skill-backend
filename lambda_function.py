@@ -86,13 +86,19 @@ def lambda_handler(request, context):
             capability_alexa_powercontroller = discovery_response.create_payload_endpoint_capability(
                 interface='Alexa.PowerController',
                 supported=[{'name': 'powerState'}])
+            capability_alexa_togglecontroller = discovery_response.create_payload_endpoint_capability(
+                interface='Alexa.ToggleController',
+                supported=[{'name': 'toggleState', 'instance':'Spa.Lights'}])
             capability_alexa_endpointhealth = discovery_response.create_payload_endpoint_capability(
                 interface='Alexa.EndpointHealth',
                 supported=[{'name': 'connectivity'}])
             discovery_response.add_payload_endpoint(
                 friendly_name='Sample Light Bulb',
                 endpoint_id='sample-bulb-01',
-                capabilities=[capability_alexa, capability_alexa_endpointhealth, capability_alexa_powercontroller])
+                capabilities=[capability_alexa, 
+                              capability_alexa_powercontroller,
+                              capability_alexa_togglecontroller,
+                              capability_alexa_endpointhealth,])
             return send_response(discovery_response.get())
 
     if namespace == 'Alexa.PowerController':
