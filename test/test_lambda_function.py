@@ -1,62 +1,50 @@
+from argparse import Namespace
 import unittest
 from source import lambda_function
+from lib import alexa_message as message
+
+
+def print_handler_response(response):
+    m = 40
+    print(m*'-')
+    print((m/2)*'-' + 'HANDLER RESPONSE' + (m/2)*'-')
+    print(m*'-')
+    print(response)
+    print(m*'-')
 
 
 class TestHandler(unittest.TestCase):
 
-    def test_handler(self):
+    def test_not_implemented(self):
         self.maxDiff = None
-        context = {'aws_request_id': 'c048b9bf-e5d8-442f-9164-0d3a50668bce',
-                   'log_group_name': '/aws/lambda/spa-skill-backend',
-                   'log_stream_name': '2022/07/27/[$LATEST]99b8d584e06f4cef81c559257fb24dd7',
-                   'function_name': 'spa-skill-backend',
-                   'memory_limit_in_mb': '128',
-                   'function_version': '$LATEST',
-                   'invoked_function_arn': 'arn:aws:lambda:us-east-1:329531334150:function:spa-skill-backend',
-                   'client_context': None,
-                   'identity': None}
-
-        request = {
-            "directive": {
-                "header": {
-                    "namespace": "Alexa.NotImplementedInterface",
-                    "instance": "Spa.Lights",
-                    "name": "TurnOn",
-                            "messageId": "1234",
-                            "correlationToken": "an opaque correlation token",
-                            "payloadVersion": "3"},
-                "endpoint": {
-                    "scope": {
-                        "type": "BearerToken",
-                                "token": "an OAuth2 bearer token"},
-                    "endpointId": "endpoint ID",
-                    "cookie": {}},
-                "payload": {}
-            }
-        }
-        expected = {
-            'event': {
-                'header': {
-                    'namespace': 'Alexa',
-                    'name': 'ErrorResponse',
-                    'messageId': '1234',
-                    'payloadVersion': '3'},
-                'endpoint': {
-                    'scope': {
-                        'type': 'BearerToken', 'token': 'INVALID'},
-                    'endpointId': 'INVALID'},
-                'payload': {
-                    'type': 'INTERFACE_NOT_IMPLEMENTED',
-                            'message': 'The interface namespace declared in directive is not implemented in handler.'}
-            }
-        }
+        context = message.AlexaContext().get()
+        request = message.AlexaRequest(namespace="Alexa.NotImplementedInterface").get()
+        expected = message.AlexaResponse(namespace='Alexa', name='ErrorResponse', payload={
+            'type': 'INTERFACE_NOT_IMPLEMENTED',
+            'message': 'The interface namespace declared in directive is not implemented in handler.'}).get()
         response = lambda_function.lambda_handler(request, context)
-        # print(20*'-')
-        # print('HANDLER RESPONSE')
-        # print(20*'-')
-        # print(response)
-        # print(20*'-')
-        self.assertEqual(response, expected)
+        self.assertIsNotNone(response)
+        self.assertEqual(response['event']['header']['namespace'], 'Alexa')
+        self.assertEqual(response['event']['header']['name'], 'ErrorResponse')
+        self.assertEqual(response['event']['payload']
+                         ['type'], 'INTERFACE_NOT_IMPLEMENTED')
+
+    def test_discovery(self):
+        self.maxDiff = None
+        context = message.AlexaContext().get()
+        request = message.AlexaRequest(
+            namespace="Alexa.Discovery", name="Discover").get()
+        response = lambda_function.lambda_handler(request, context)
+
+        self.assertEqual(response['event']['header']['namespace'], 'Alexa.Discovery')
+        self.assertEqual(response['event']['header']['name'], 'Discover.Response')
+
+        interfaces = []
+        for endpoint in response['event']['payload']['endpoints']:
+            for capability in endpoint['capabilities']:
+                interfaces.append(capability['interface'])
+
+        self.assertIn('Alexa.ToggleController',interfaces)
 
 
 if __name__ == '__main__':

@@ -14,6 +14,11 @@ Interfaces:
     - Discovery:
 
 
+## Testing
+    
+Dependencies:
+    - nose2
+    - pytest
 
 Run tests:
-    Standing in parent dir, run '''python -m unittest test.test_lambda_function.py'''
+    Standing in parent dir, run ```pytest```

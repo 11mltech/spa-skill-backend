@@ -22,7 +22,7 @@ from urllib.error import HTTPError
 from datetime import datetime, timezone
 
 # local modules
-from lib.alexa_response import AlexaResponse
+from lib.alexa_message import AlexaResponse
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -122,12 +122,12 @@ def lambda_handler(request, context):
     elif namespace == 'Alexa.ToggleController':
         return AlexaResponse(
             name='ErrorResponse',
-            messageId='1234',
+            messageId=request['directive']['header']['messageId'],
             payload={'type': 'TOGGLE_ERROR', 'message': 'ToggleController is not implemented in handler.'}).get()
     else:
         return AlexaResponse(
             name='ErrorResponse',
-            messageId='1234',
+            messageId=request['directive']['header']['messageId'],
             payload={'type': 'INTERFACE_NOT_IMPLEMENTED', 'message': 'The interface namespace declared in directive is not implemented in handler.'}).get()
 
 
@@ -140,18 +140,18 @@ def send_response(response):
 class DeviceCloud:
 
     def __init__(self, **kwargs):
-        self.address = kwargs.get('address', 'https://milonet.duckdns.org')
+        self.address = kwargs.get('address', 'http://localhost:3434')
         self.endpoints = {
-            "verify": "spa-auth/verify"
+            "discovery": "/spa/discovery"
         }
 
     # Check if user exists in server, using accessToken provided by directive
-    def verify_user(self, **kwargs):
-        url = self.address + self.endpoints['verify']
-        values = {'token' : kwargs.get('accessToken', '')}
-        data = urllib.parse.urlencode(values)
-        data = data.encode('ascii') # data should be bytes
-        req = urllib.request.Request(url, data)
+    def device_discovery(self, **kwargs):
+        url = self.address + self.endpoints['discovery']
+     #   values = {'token' : kwargs.get('accessToken', '')}
+     #   data = urllib.parse.urlencode(values)
+     #   data = data.encode('ascii') # data should be bytes
+        req = urllib.request.Request(url)
         with urllib.request.urlopen(req) as response:
             the_page = response.read()
         logger.info(f'GET {url} response status code: {response.status}')

@@ -1,6 +1,7 @@
 import uuid
 import random
 
+
 class AlexaResponse:
 
     def __init__(self, **kwargs):
@@ -28,7 +29,8 @@ class AlexaResponse:
         }
 
         if 'correlation_token' in kwargs:
-            self.event['header']['correlation_token'] = kwargs.get('correlation_token', 'INVALID')
+            self.event['header']['correlation_token'] = kwargs.get(
+                'correlation_token', 'INVALID')
 
         if 'cookie' in kwargs:
             self.event['endpoint']['cookie'] = kwargs.get('cookie', '{}')
@@ -41,7 +43,6 @@ class AlexaResponse:
         self.context_properties.append(self.create_context_property(**kwargs))
         self.context_properties.append(self.create_context_property())
 
-
     def add_cookie(self, key, value):
 
         if "cookies" in self is None:
@@ -51,7 +52,6 @@ class AlexaResponse:
 
     def add_payload_endpoint(self, **kwargs):
         self.payload_endpoints.append(self.create_payload_endpoint(**kwargs))
-
 
     def create_context_property(self, **kwargs):
         return {
@@ -83,7 +83,8 @@ class AlexaResponse:
             'manufacturerName': kwargs.get('manufacturer_name', 'Whole Electronic Solutions')
         }
 
-        endpoint['additionalAttributes'] = kwargs.get('additionalAttributes', additionalAttributes)
+        endpoint['additionalAttributes'] = kwargs.get(
+            'additionalAttributes', additionalAttributes)
         if 'cookie' in kwargs:
             endpoint['cookie'] = kwargs.get('cookie', {})
 
@@ -100,8 +101,10 @@ class AlexaResponse:
         if supported:
             capability['properties'] = {}
             capability['properties']['supported'] = supported
-            capability['properties']['proactivelyReported'] = kwargs.get('proactively_reported', False)
-            capability['properties']['retrievable'] = kwargs.get('retrievable', False)
+            capability['properties']['proactivelyReported'] = kwargs.get(
+                'proactively_reported', False)
+            capability['properties']['retrievable'] = kwargs.get(
+                'retrievable', False)
         return capability
 
     def get(self, remove_empty=True):
@@ -134,3 +137,46 @@ class AlexaResponse:
             self.event['payload']['endpoints'] = []
 
         self.event['payload']['endpoints'] = payload_endpoints
+
+
+class AlexaContext:
+    def __init__(self, **kwargs):
+
+        # Set up the context structure.
+        self.context = {'aws_request_id': kwargs.get('aws_request_id', 'test_id'),
+                        'log_group_name': '/aws/lambda/spa-skill-backend',
+                        'log_stream_name': kwargs.get('log_stream_name', 'test_log_stream'),
+                        'function_name': 'spa-skill-backend',
+                        'memory_limit_in_mb': '128',
+                        'function_version': '$LATEST',
+                        'invoked_function_arn': 'arn:aws:lambda:us-east-1:329531334150:function:spa-skill-backend',
+                        'client_context': kwargs.get('client_context', None),
+                        'identity': kwargs.get('identity', None), }
+
+    def get(self):
+        return self.context
+
+
+class AlexaRequest:
+    def __init__(self, **kwargs):
+
+        # Set up the request structure.
+        self.request = {
+            "directive": {
+                "header": {
+                    "namespace": kwargs.get('namespace', "Alexa.Discovery"),
+                    "name": kwargs.get('name', "Discover"),
+                    "messageId": kwargs.get('messageId', str(uuid.uuid4())), # do we want to be able to set an id in a request?
+                    "correlationToken": kwargs.get('correlationToken', None),
+                    "payloadVersion": "3"
+                },
+                "payload": {
+                    "scope": {
+                        "type": kwargs.get('type', "BearerToken"),
+                        "token": kwargs.get('token', None)
+                    }
+                }
+            }
+        }
+    def get(self):
+        return self.request
