@@ -43,8 +43,13 @@ class TestHandler(unittest.TestCase):
         for endpoint in response['event']['payload']['endpoints']:
             for capability in endpoint['capabilities']:
                 interfaces.append(capability['interface'])
-
         self.assertIn('Alexa.ToggleController',interfaces)
+
+        endpoints = []
+        for endpoint in response['event']['payload']['endpoints']:
+            endpoints.append(endpoint['endpointId'])
+        self.assertIn('spa_test_1', endpoints)
+
 
 
 if __name__ == '__main__':

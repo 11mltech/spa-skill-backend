@@ -92,13 +92,21 @@ def lambda_handler(request, context):
             capability_alexa_endpointhealth = discovery_response.create_payload_endpoint_capability(
                 interface='Alexa.EndpointHealth',
                 supported=[{'name': 'connectivity'}])
-            discovery_response.add_payload_endpoint(
-                friendly_name='Sample Light Bulb',
-                endpoint_id='sample-bulb-01',
-                capabilities=[capability_alexa, 
-                              capability_alexa_powercontroller,
-                              capability_alexa_togglecontroller,
-                              capability_alexa_endpointhealth,])
+
+            # TODO: request endpoint to server. 
+            #       - Needs token to authenticate user in app cloud. 
+            #       - Returns endpoint id(s) associated to user
+
+            response = json.loads(server.device_discovery(token="NoneForNow"))
+            # Endpoint for testing.
+            for endpoint in response['endpoints']:
+                discovery_response.add_payload_endpoint(
+                    friendly_name='Spa',
+                    endpoint_id=endpoint['endpoint_id'],
+                    capabilities=[capability_alexa, 
+                                capability_alexa_powercontroller,
+                                capability_alexa_togglecontroller,
+                                capability_alexa_endpointhealth,])
             return send_response(discovery_response.get())
 
     elif namespace == 'Alexa.PowerController':
@@ -151,11 +159,12 @@ class DeviceCloud:
      #   values = {'token' : kwargs.get('accessToken', '')}
      #   data = urllib.parse.urlencode(values)
      #   data = data.encode('ascii') # data should be bytes
+        token = kwargs.get('token')
         req = urllib.request.Request(url)
         with urllib.request.urlopen(req) as response:
             the_page = response.read()
         logger.info(f'GET {url} response status code: {response.status}')
-        return response.headers
+        return the_page
 
 # Make the call to your device cloud for control
 def update_device_state(endpoint_id, state, value):
