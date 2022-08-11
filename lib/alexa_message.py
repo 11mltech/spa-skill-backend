@@ -166,7 +166,8 @@ class AlexaRequest:
                 "header": {
                     "namespace": kwargs.get('namespace', "Alexa.Discovery"),
                     "name": kwargs.get('name', "Discover"),
-                    "messageId": kwargs.get('messageId', str(uuid.uuid4())), # do we want to be able to set an id in a request?
+                    # do we want to be able to set an id in a request?
+                    "messageId": kwargs.get('messageId', str(uuid.uuid4())),
                     "correlationToken": kwargs.get('correlationToken', None),
                     "payloadVersion": "3"
                 },
@@ -178,5 +179,6 @@ class AlexaRequest:
                 }
             }
         }
+
     def get(self):
         return self.request

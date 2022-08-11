@@ -35,6 +35,7 @@ client_secret = "Your Client Secret"
 # TODO: Update with your Endpoint Id.
 endpoint_id = "device_id"
 
+
 def lambda_handler(request, context):
 
     # Dump the request for logging - check the CloudWatch logs.
@@ -72,16 +73,17 @@ def lambda_handler(request, context):
     if namespace == 'Alexa.Authorization':
         if name == 'AcceptGrant':
             response = handle_accept_grant(request)
-            auth_response = AlexaResponse(message_id=response['event']['header']['messageId'], 
-                                namespace=response['event']['header']['namespace'],
-                                name=response['event']['header']['name'],
-                                payload=response['event']['payload'])
+            auth_response = AlexaResponse(message_id=response['event']['header']['messageId'],
+                                          namespace=response['event']['header']['namespace'],
+                                          name=response['event']['header']['name'],
+                                          payload=response['event']['payload'])
             return send_response(auth_response.get())
 
     elif namespace == 'Alexa.Discovery':
         if name == 'Discover':
             # The request to discover the devices the skill controls.
-            discovery_response = AlexaResponse(namespace='Alexa.Discovery', name='Discover.Response')
+            discovery_response = AlexaResponse(
+                namespace='Alexa.Discovery', name='Discover.Response')
 
             # Create the response and add capabilities.
             capability_alexa = discovery_response.create_payload_endpoint_capability()
@@ -90,15 +92,15 @@ def lambda_handler(request, context):
                 supported=[{'name': 'powerState'}])
             capability_alexa_togglecontroller = discovery_response.create_payload_endpoint_capability(
                 interface='Alexa.ToggleController',
-                supported=[{'name': 'toggleState', 'instance':'Spa.Lights'}])
+                supported=[{'name': 'toggleState', 'instance': 'Spa.Lights'}])
             capability_alexa_endpointhealth = discovery_response.create_payload_endpoint_capability(
                 interface='Alexa.EndpointHealth',
                 supported=[{'name': 'connectivity'}])
 
-            
             # Get user's information from cloud server with token provided in request
             try:
-                response = json.loads(server.device_discovery(token=request['directive']['payload']['scope']['token']))
+                response = json.loads(server.device_discovery(
+                    token=request['directive']['payload']['scope']['token']))
             except HTTPError:
                 return AlexaResponse(
                     namespace='Alexa.Discovery',
@@ -106,16 +108,15 @@ def lambda_handler(request, context):
                     messageId=request['directive']['header']['messageId'],
                     payload={'type': 'HTTP_ERROR', 'message': 'Got HTTPError for directive request. Token not found'}).get()
 
-
             # Gather endpoints with response and send back to Alexa
             for endpoint in response['endpoints']:
                 discovery_response.add_payload_endpoint(
                     friendly_name='Spa',
                     endpoint_id=endpoint['endpoint_id'],
-                    capabilities=[capability_alexa, 
-                                capability_alexa_powercontroller,
-                                capability_alexa_togglecontroller,
-                                capability_alexa_endpointhealth,])
+                    capabilities=[capability_alexa,
+                                  capability_alexa_powercontroller,
+                                  capability_alexa_togglecontroller,
+                                  capability_alexa_endpointhealth, ])
             return send_response(discovery_response.get())
 
     elif namespace == 'Alexa.PowerController':
@@ -126,14 +127,16 @@ def lambda_handler(request, context):
         correlation_token = request['directive']['header']['correlationToken']
 
         # Check for an error when setting the state.
-        device_set = update_device_state(endpoint_id=endpoint_id, state='powerState', value=power_state_value)
+        device_set = update_device_state(
+            endpoint_id=endpoint_id, state='powerState', value=power_state_value)
         if not device_set:
             return AlexaResponse(
                 name='ErrorResponse',
                 payload={'type': 'ENDPOINT_UNREACHABLE', 'message': 'Unable to reach endpoint database.'}).get()
 
         directive_response = AlexaResponse(correlation_token=correlation_token)
-        directive_response.add_context_property(namespace='Alexa.PowerController', name='powerState', value=power_state_value)
+        directive_response.add_context_property(
+            namespace='Alexa.PowerController', name='powerState', value=power_state_value)
         return send_response(directive_response.get())
 
     elif namespace == 'Alexa.ToggleController':
@@ -154,6 +157,7 @@ def send_response(response):
     print(json.dumps(response))
     return response
 
+
 class DeviceCloud:
 
     def __init__(self, **kwargs):
@@ -165,11 +169,8 @@ class DeviceCloud:
 
     # Check if user exists in server, using accessToken provided by directive
     def device_discovery(self, **kwargs):
-        url = "/".join([self.address, self.endpoints['base'], self.endpoints['discovery'], kwargs.get('token')])
-     #   values = {'token' : kwargs.get('accessToken', '')}
-     #   data = urllib.parse.urlencode(values)
-     #   data = data.encode('ascii') # data should be bytes
-        token = kwargs.get('token')
+        url = "/".join([self.address, self.endpoints['base'],
+                       self.endpoints['discovery'], kwargs.get('token')])
         req = urllib.request.Request(url)
         try:
             with urllib.request.urlopen(req) as response:
@@ -181,10 +182,13 @@ class DeviceCloud:
             raise HTTPError
 
 # Make the call to your device cloud for control
+
+
 def update_device_state(endpoint_id, state, value):
     attribute_key = state + 'Value'
     # result = stubControlFunctionToYourCloud(endpointId, token, request);
     return True
+
 
 def get_utc_timestamp(seconds=None):
     return datetime.now(timezone.utc).isoformat()

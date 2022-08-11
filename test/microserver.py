@@ -15,12 +15,13 @@ def discovery(token=None):
         return {
             "endpoints": [
                 {
-                    "endpoint_id":spa_map[token]
+                    "endpoint_id": spa_map[token]
                 }
             ]
         }
     except KeyError:
         response.status = 400
         return 'Object already exists with that name'
+
 
 run(app, host='localhost', port=3434)
