@@ -13,7 +13,7 @@ def print_handler_response(response):
     print(m*'-')
 
 
-class TestHandler(unittest.TestCase):
+class TestCommon(unittest.TestCase):
 
     def test_not_implemented(self):
         self.maxDiff = None
@@ -30,10 +30,12 @@ class TestHandler(unittest.TestCase):
         self.assertEqual(response['event']['payload']
                          ['type'], 'INTERFACE_NOT_IMPLEMENTED')
 
-    def test_discovery(self):
+class TestDiscovery(unittest.TestCase):
+
+    def test_discovery_good_token(self):
         self.maxDiff = None
         context = message.AlexaContext().get()
-        request = message.AlexaRequest(
+        request = message.AlexaDiscoveryRequest(
             namespace="Alexa.Discovery", name="Discover", token="0101").get()
         response = lambda_function.lambda_handler(request, context)
 
@@ -55,7 +57,7 @@ class TestHandler(unittest.TestCase):
 
     def test_discovery_bad_token(self):
         context = message.AlexaContext().get()
-        request = message.AlexaRequest(
+        request = message.AlexaDiscoveryRequest(
             namespace="Alexa.Discovery", name="Discover", token="0000").get()
         response = lambda_function.lambda_handler(request, context)
 
@@ -63,6 +65,17 @@ class TestHandler(unittest.TestCase):
                          ['namespace'], 'Alexa.Discovery')
         self.assertEqual(response['event']['header']
                          ['name'], 'Discovery.ErrorResponse')
+
+class TestToggle(unittest.TestCase):
+
+    def test_toggle(self):
+        context = message.AlexaContext().get()
+        request = message.AlexaToggleRequest(
+            namespace="Alexa.ToggleController", name="TurnOn", token="0101").get()
+        response = lambda_function.lambda_handler(request, context)
+    
+        self.assertTrue(1==0)
+
 
 
 if __name__ == '__main__':

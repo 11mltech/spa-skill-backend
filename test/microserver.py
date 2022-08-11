@@ -2,6 +2,9 @@ from urllib.error import HTTPError
 from bottle import Bottle, run, response
 app = Bottle()
 
+def run_server():
+    run(app, host='localhost', port=3434)
+
 
 @app.route('/spa/discovery/<token>')
 def discovery(token=None):
@@ -24,4 +27,4 @@ def discovery(token=None):
         return 'Object already exists with that name'
 
 
-run(app, host='localhost', port=3434)
+run_server()

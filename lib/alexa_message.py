@@ -159,26 +159,39 @@ class AlexaContext:
 
 class AlexaRequest:
     def __init__(self, **kwargs):
-
         # Set up the request structure.
         self.request = {
             "directive": {
                 "header": {
-                    "namespace": kwargs.get('namespace', "Alexa.Discovery"),
+                    "namespace": kwargs.get('namespace', "Alexa"),
                     "name": kwargs.get('name', "Discover"),
-                    # do we want to be able to set an id in a request?
-                    "messageId": kwargs.get('messageId', str(uuid.uuid4())),
+                    "messageId": str(uuid.uuid4()),
                     "correlationToken": kwargs.get('correlationToken', None),
                     "payloadVersion": "3"
                 },
-                "payload": {
-                    "scope": {
-                        "type": kwargs.get('type', "BearerToken"),
-                        "token": kwargs.get('token', None)
-                    }
-                }
+                "payload": kwargs.get('payload', {})
             }
         }
 
     def get(self):
         return self.request
+
+
+class AlexaDiscoveryRequest(AlexaRequest):
+    def __init__(self, **kwargs):
+
+        payload = {
+            'scope': {
+                "type": kwargs.get('type', "BearerToken"),
+                "token": kwargs.get('token', None)
+            }}
+
+        super().__init__(namespace="Alexa.Discovery",
+                         name="Discover", payload=payload)
+
+
+class AlexaToggleRequest(AlexaRequest):
+    def __init__(self, **kwargs):
+
+        super().__init__(namespace="Alexa.ToggleController",
+                         name="TurnOn")
