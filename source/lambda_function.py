@@ -13,6 +13,7 @@
 
 
 import json
+import os
 from urllib import response
 import logging
 import datetime
@@ -81,7 +82,8 @@ def lambda_handler(request, context):
         if name == 'Discover':
             # The request to discover the devices the skill controls.
             discovery_response = AlexaResponse(namespace='Alexa.Discovery', name='Discover.Response')
-            # Create the response and add the light bulb capabilities.
+
+            # Create the response and add capabilities.
             capability_alexa = discovery_response.create_payload_endpoint_capability()
             capability_alexa_powercontroller = discovery_response.create_payload_endpoint_capability(
                 interface='Alexa.PowerController',
@@ -93,12 +95,19 @@ def lambda_handler(request, context):
                 interface='Alexa.EndpointHealth',
                 supported=[{'name': 'connectivity'}])
 
-            # TODO: request endpoint to server. 
-            #       - Needs token to authenticate user in app cloud. 
-            #       - Returns endpoint id(s) associated to user
+            
+            # Get user's information from cloud server with token provided in request
+            try:
+                response = json.loads(server.device_discovery(token=request['directive']['payload']['scope']['token']))
+            except HTTPError:
+                return AlexaResponse(
+                    namespace='Alexa.Discovery',
+                    name='Discovery.ErrorResponse',
+                    messageId=request['directive']['header']['messageId'],
+                    payload={'type': 'HTTP_ERROR', 'message': 'Got HTTPError for directive request. Token not found'}).get()
 
-            response = json.loads(server.device_discovery(token="NoneForNow"))
-            # Endpoint for testing.
+
+            # Gather endpoints with response and send back to Alexa
             for endpoint in response['endpoints']:
                 discovery_response.add_payload_endpoint(
                     friendly_name='Spa',
@@ -150,21 +159,26 @@ class DeviceCloud:
     def __init__(self, **kwargs):
         self.address = kwargs.get('address', 'http://localhost:3434')
         self.endpoints = {
-            "discovery": "/spa/discovery"
+            "base": "spa",
+            "discovery": "discovery"
         }
 
     # Check if user exists in server, using accessToken provided by directive
     def device_discovery(self, **kwargs):
-        url = self.address + self.endpoints['discovery']
+        url = "/".join([self.address, self.endpoints['base'], self.endpoints['discovery'], kwargs.get('token')])
      #   values = {'token' : kwargs.get('accessToken', '')}
      #   data = urllib.parse.urlencode(values)
      #   data = data.encode('ascii') # data should be bytes
         token = kwargs.get('token')
         req = urllib.request.Request(url)
-        with urllib.request.urlopen(req) as response:
-            the_page = response.read()
-        logger.info(f'GET {url} response status code: {response.status}')
-        return the_page
+        try:
+            with urllib.request.urlopen(req) as response:
+                the_page = response.read()
+            logger.info(f'GET {url} response status code: {response.status}')
+            return the_page
+        except urllib.error.HTTPError as HTTPError:
+            logger.error(f'GET {url} response error')
+            raise HTTPError
 
 # Make the call to your device cloud for control
 def update_device_state(endpoint_id, state, value):

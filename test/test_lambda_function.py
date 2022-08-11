@@ -33,7 +33,7 @@ class TestHandler(unittest.TestCase):
         self.maxDiff = None
         context = message.AlexaContext().get()
         request = message.AlexaRequest(
-            namespace="Alexa.Discovery", name="Discover").get()
+            namespace="Alexa.Discovery", name="Discover", token="0101").get()
         response = lambda_function.lambda_handler(request, context)
 
         self.assertEqual(response['event']['header']['namespace'], 'Alexa.Discovery')
@@ -49,6 +49,15 @@ class TestHandler(unittest.TestCase):
         for endpoint in response['event']['payload']['endpoints']:
             endpoints.append(endpoint['endpointId'])
         self.assertIn('spa_test_1', endpoints)
+    
+    def test_discovery_bad_token(self):
+        context = message.AlexaContext().get()
+        request = message.AlexaRequest(
+            namespace="Alexa.Discovery", name="Discover", token="0000").get()
+        response = lambda_function.lambda_handler(request, context)
+
+        self.assertEqual(response['event']['header']['namespace'], 'Alexa.Discovery')
+        self.assertEqual(response['event']['header']['name'], 'Discovery.ErrorResponse')
 
 
 
