@@ -1,5 +1,6 @@
 import uuid
 import random
+import datetime
 
 
 class AlexaResponse:
@@ -58,7 +59,8 @@ class AlexaResponse:
             'namespace': kwargs.get('namespace', 'Alexa.EndpointHealth'),
             'name': kwargs.get('name', 'connectivity'),
             'value': kwargs.get('value', {'value': 'OK'}),
-            'timeOfSample': get_utc_timestamp(),
+            'instance': kwargs.get('instance', 'no-instance'),
+            'timeOfSample': datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S"),
             'uncertaintyInMilliseconds': kwargs.get('uncertainty_in_milliseconds', 0)
         }
 
@@ -139,59 +141,79 @@ class AlexaResponse:
         self.event['payload']['endpoints'] = payload_endpoints
 
 
-class AlexaContext:
-    def __init__(self, **kwargs):
-
-        # Set up the context structure.
-        self.context = {'aws_request_id': kwargs.get('aws_request_id', 'test_id'),
-                        'log_group_name': '/aws/lambda/spa-skill-backend',
-                        'log_stream_name': kwargs.get('log_stream_name', 'test_log_stream'),
-                        'function_name': 'spa-skill-backend',
-                        'memory_limit_in_mb': '128',
-                        'function_version': '$LATEST',
-                        'invoked_function_arn': 'arn:aws:lambda:us-east-1:329531334150:function:spa-skill-backend',
-                        'client_context': kwargs.get('client_context', None),
-                        'identity': kwargs.get('identity', None), }
-
-    def get(self):
-        return self.context
-
-
+# Usage: pass arguments as json or use methods to populate request. Pass scope method as parameter for set_endpoint
 class AlexaRequest:
     def __init__(self, **kwargs):
         # Set up the request structure.
-        self.request = {
-            "directive": {
-                "header": {
-                    "namespace": kwargs.get('namespace', "Alexa"),
-                    "name": kwargs.get('name', "Discover"),
-                    "messageId": str(uuid.uuid4()),
-                    "correlationToken": kwargs.get('correlationToken', None),
-                    "payloadVersion": "3"
-                },
-                "payload": kwargs.get('payload', {})
-            }
+
+        self.header = kwargs.get('header', {})
+        self.endpoint = kwargs.get('endpoint', {})
+        self.payload = kwargs.get('payload', {})
+
+    def set_header(self, namespace, name, **kwargs):
+        self.header = {
+            "namespace": namespace,
+            "name": name,
+            "messageId": str(uuid.uuid4()),
+            "correlationToken": kwargs.get('correlationToken', None),
+            "payloadVersion": "3"
+        }
+        return self
+
+    def set_payload(self, payload, **kwargs):
+        self.payload = payload
+        return self
+
+    def set_endpoint(self, endpointId, scope, **kwargs):
+        self.endpoint = {
+            "endpointId": endpointId,
+            "cookie": kwargs.get('cookie', None),
+            'scope': scope
+        }
+        return self
+
+    def scope(self, token, type='BearerToken'):
+        return {
+            "type": type,
+            "token": token
         }
 
     def get(self):
-        return self.request
+        return {
+            'directive': {
+                'header': self.header,
+                'endpoint': self.endpoint,
+                'payload': self.payload
+            }
+        }
 
 
 class AlexaDiscoveryRequest(AlexaRequest):
     def __init__(self, **kwargs):
 
-        payload = {
-            'scope': {
-                "type": kwargs.get('type', "BearerToken"),
-                "token": kwargs.get('token', None)
-            }}
+        super().__init__()
 
-        super().__init__(namespace="Alexa.Discovery",
-                         name="Discover", payload=payload)
+        self.set_header(namespace="Alexa.Discovery", name="Discover")
+        self.set_payload({'scope': self.scope(kwargs.get('token', None))})
+
+    def get(self):
+        return {
+            'directive': {
+                'header': self.header,
+                'payload': self.payload
+            }
+        }
 
 
 class AlexaToggleRequest(AlexaRequest):
-    def __init__(self, **kwargs):
+    def __init__(self, endpointId, token, action="TurnOn", **kwargs):
 
-        super().__init__(namespace="Alexa.ToggleController",
-                         name="TurnOn")
+        super().__init__()
+        self.set_header(namespace="Alexa.ToggleController", name=action,
+                        instance=kwargs.get('instance', 'Spa.Lights'))
+        self.set_endpoint(endpointId, self.scope(token), cookie=None)
+
+    def set_header(self, namespace, name, instance):
+        super().set_header(namespace, name)
+        self.header['instance'] = instance
+        return self

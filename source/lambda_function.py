@@ -72,11 +72,11 @@ def lambda_handler(request, context):
     # Handle the incoming request from Alexa based on the namespace.
     if namespace == 'Alexa.Authorization':
         if name == 'AcceptGrant':
-            response = handle_accept_grant(request)
-            auth_response = AlexaResponse(message_id=response['event']['header']['messageId'],
-                                          namespace=response['event']['header']['namespace'],
-                                          name=response['event']['header']['name'],
-                                          payload=response['event']['payload'])
+            toggle_response = handle_accept_grant(request)
+            auth_response = AlexaResponse(message_id=toggle_response['event']['header']['messageId'],
+                                          namespace=toggle_response['event']['header']['namespace'],
+                                          name=toggle_response['event']['header']['name'],
+                                          payload=toggle_response['event']['payload'])
             return send_response(auth_response.get())
 
     elif namespace == 'Alexa.Discovery':
@@ -99,17 +99,16 @@ def lambda_handler(request, context):
 
             # Get user's information from cloud server with token provided in request
             try:
-                response = json.loads(server.device_discovery(
+                toggle_response = json.loads(server.device_discovery(
                     token=request['directive']['payload']['scope']['token']))
             except HTTPError:
                 return AlexaResponse(
                     namespace='Alexa.Discovery',
                     name='Discovery.ErrorResponse',
-                    messageId=request['directive']['header']['messageId'],
                     payload={'type': 'HTTP_ERROR', 'message': 'Got HTTPError for directive request. Token not found'}).get()
 
             # Gather endpoints with response and send back to Alexa
-            for endpoint in response['endpoints']:
+            for endpoint in toggle_response['endpoints']:
                 discovery_response.add_payload_endpoint(
                     friendly_name='Spa',
                     endpoint_id=endpoint['endpoint_id'],
@@ -127,7 +126,7 @@ def lambda_handler(request, context):
         correlation_token = request['directive']['header']['correlationToken']
 
         # Check for an error when setting the state.
-        device_set = update_device_state(
+        device_set = server.update_device_state(
             endpoint_id=endpoint_id, state='powerState', value=power_state_value)
         if not device_set:
             return AlexaResponse(
@@ -140,10 +139,34 @@ def lambda_handler(request, context):
         return send_response(directive_response.get())
 
     elif namespace == 'Alexa.ToggleController':
-        return AlexaResponse(
-            name='ErrorResponse',
-            messageId=request['directive']['header']['messageId'],
-            payload={'type': 'TOGGLE_ERROR', 'message': 'ToggleController is not implemented in handler.'}).get()
+
+        endpoint_id = request['directive']['endpoint']['endpointId']
+        instance = request['directive']['header']['instance']
+        token = request['directive']['endpoint']['scope']['token']
+        correlation_token = request['directive']['header']['correlationToken']
+        value = request['directive']['header']['name']
+
+        if instance == 'Spa.Lights':
+            device = 'lights'
+        else:
+            device = 'Unmaped device'
+
+        try:
+            response = json.loads(
+                server.update_device_state(endpoint_id, device, value, token))
+        except HTTPError:
+            return AlexaResponse(
+                namespace='Alexa.ToggleController',
+                name='ToggleController.ErrorResponse',
+                payload={'type': 'HTTP_ERROR', 'message': 'Got HTTPError for directive request. Token not found'}).get()
+
+        toggle_response = AlexaResponse(
+            namespace='Alexa', name='Response', token=token, correlation_token=correlation_token)
+        toggle_response.add_context_property(namespace="Alexa.ToggleController",
+                                      instance=instance, name='toggleState', value=response['status']['state'])
+        return send_response(toggle_response.get())
+
+
     else:
         return AlexaResponse(
             name='ErrorResponse',
@@ -164,13 +187,22 @@ class DeviceCloud:
         self.address = kwargs.get('address', 'http://localhost:3434')
         self.endpoints = {
             "base": "spa",
-            "discovery": "discovery"
+            "discovery": "discovery",
+            "update_state": "updatestate"
         }
 
     # Check if user exists in server, using accessToken provided by directive
     def device_discovery(self, **kwargs):
         url = "/".join([self.address, self.endpoints['base'],
                        self.endpoints['discovery'], kwargs.get('token')])
+        return self.get_request(url)
+
+    def update_device_state(self, endpoint_id, device, value, token):
+        url = "/".join([self.address, self.endpoints['base'],
+                       self.endpoints['update_state'], device, value, token])
+        return self.get_request(url)
+
+    def get_request(self, url):
         req = urllib.request.Request(url)
         try:
             with urllib.request.urlopen(req) as response:
@@ -180,14 +212,6 @@ class DeviceCloud:
         except urllib.error.HTTPError as HTTPError:
             logger.error(f'GET {url} response error')
             raise HTTPError
-
-# Make the call to your device cloud for control
-
-
-def update_device_state(endpoint_id, state, value):
-    attribute_key = state + 'Value'
-    # result = stubControlFunctionToYourCloud(endpointId, token, request);
-    return True
 
 
 def get_utc_timestamp(seconds=None):

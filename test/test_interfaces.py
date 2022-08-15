@@ -17,27 +17,25 @@ class TestCommon(unittest.TestCase):
 
     def test_not_implemented(self):
         self.maxDiff = None
-        context = message.AlexaContext().get()
-        request = message.AlexaRequest(
-            namespace="Alexa.NotImplementedInterface").get()
+        request = message.AlexaRequest().set_header(
+            namespace="Alexa.NotImplementedInterface", name="Alexa").get()
         expected = message.AlexaResponse(namespace='Alexa', name='ErrorResponse', payload={
             'type': 'INTERFACE_NOT_IMPLEMENTED',
             'message': 'The interface namespace declared in directive is not implemented in handler.'}).get()
-        response = lambda_function.lambda_handler(request, context)
+        response = lambda_function.lambda_handler(request, None)
         self.assertIsNotNone(response)
         self.assertEqual(response['event']['header']['namespace'], 'Alexa')
         self.assertEqual(response['event']['header']['name'], 'ErrorResponse')
         self.assertEqual(response['event']['payload']
                          ['type'], 'INTERFACE_NOT_IMPLEMENTED')
 
+
 class TestDiscovery(unittest.TestCase):
 
     def test_discovery_good_token(self):
         self.maxDiff = None
-        context = message.AlexaContext().get()
-        request = message.AlexaDiscoveryRequest(
-            namespace="Alexa.Discovery", name="Discover", token="0101").get()
-        response = lambda_function.lambda_handler(request, context)
+        request = message.AlexaDiscoveryRequest(token='0101').get()
+        response = lambda_function.lambda_handler(request, None)
 
         self.assertEqual(response['event']['header']
                          ['namespace'], 'Alexa.Discovery')
@@ -56,26 +54,31 @@ class TestDiscovery(unittest.TestCase):
         self.assertIn('spa_test_1', endpoints)
 
     def test_discovery_bad_token(self):
-        context = message.AlexaContext().get()
-        request = message.AlexaDiscoveryRequest(
-            namespace="Alexa.Discovery", name="Discover", token="0000").get()
-        response = lambda_function.lambda_handler(request, context)
+        request = message.AlexaDiscoveryRequest(token='0000').get()
+        response = lambda_function.lambda_handler(request, None)
 
         self.assertEqual(response['event']['header']
                          ['namespace'], 'Alexa.Discovery')
         self.assertEqual(response['event']['header']
                          ['name'], 'Discovery.ErrorResponse')
 
+
 class TestToggle(unittest.TestCase):
 
     def test_toggle(self):
-        context = message.AlexaContext().get()
         request = message.AlexaToggleRequest(
-            namespace="Alexa.ToggleController", name="TurnOn", token="0101").get()
-        response = lambda_function.lambda_handler(request, context)
-    
-        self.assertTrue(1==0)
+            endpointId='spa_test_1', token="0101", action="TurnOn", instance='Spa.Lights').get()
+        response = lambda_function.lambda_handler(request, None)
 
+        self.assertEqual(response['context']['properties'][0]['instance'], 'Spa.Lights')
+        self.assertEqual(response['context']['properties'][0]['value'], 'On')
+
+        request = message.AlexaToggleRequest(
+            endpointId='spa_test_1', token="0101", action="TurnOff", instance='Spa.Lights').get()
+        response = lambda_function.lambda_handler(request, None)
+
+        self.assertEqual(response['context']['properties'][0]['instance'], 'Spa.Lights')
+        self.assertNotEqual(response['context']['properties'][0]['value'], 'On')
 
 
 if __name__ == '__main__':
