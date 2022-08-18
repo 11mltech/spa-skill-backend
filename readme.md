@@ -14,6 +14,18 @@ Interfaces:
     - Discovery:
 
 
+## Testing
 
-Run tests:
-    Standing in parent dir, run '''python -m unittest test.test_lambda_function.py'''
+miniconda installation:
+https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html#
+
+once miniconda is installed and you are in base environment, create a new one:
+> conda create --name <env>
+> conda activate --name <env>
+
+Install dependencies for testing:
+> conda install pytest
+> conda install -c conda-forge bottle
+
+Stand in root directory and run
+> pytest
