@@ -151,6 +151,6 @@ class TestToggle(unittest.TestCase):
 mock_server = Thread(target=run_server)
 mock_server.daemon = True
 mock_server.start()
-time.sleep(1)
+time.sleep(.1)
 if __name__ == '__main__':
     unittest.main()
