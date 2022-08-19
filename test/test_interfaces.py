@@ -70,12 +70,6 @@ def device_update(value=None, token=None):
         response.status = 400
         return 'Internal spa-token pair map error'
 
-
-mock_server = Thread(target=run_server)
-mock_server.daemon = True
-mock_server.start()
-
-
 def print_handler_response(response):
     m = 40
     print(m*'-')
@@ -153,5 +147,8 @@ class TestToggle(unittest.TestCase):
         self.assertNotEqual(response['context']['properties'][0]['value'], 'On')
 
 
+mock_server = Thread(target=run_server)
+mock_server.daemon = True
+mock_server.start()
 if __name__ == '__main__':
     unittest.main()
