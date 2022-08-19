@@ -32,5 +32,4 @@ jobs:
       run: |
         conda install pytest
         conda install -c conda-forge bottle
-        python test/microserver.py &
         pytest
