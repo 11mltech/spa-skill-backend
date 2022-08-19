@@ -1,16 +1,9 @@
-from argparse import Namespace
 import unittest
+import time
 from source import lambda_function
 from lib import alexa_message as message
-
-
-def print_handler_response(response):
-    m = 40
-    print(m*'-')
-    print((m/2)*'-' + 'HANDLER RESPONSE' + (m/2)*'-')
-    print(m*'-')
-    print(response)
-    print(m*'-')
+from threading import Thread
+from test import microserver as ms
 
 
 class TestCommon(unittest.TestCase):
@@ -19,9 +12,6 @@ class TestCommon(unittest.TestCase):
         self.maxDiff = None
         request = message.AlexaRequest().set_header(
             namespace="Alexa.NotImplementedInterface", name="Alexa").get()
-        expected = message.AlexaResponse(namespace='Alexa', name='ErrorResponse', payload={
-            'type': 'INTERFACE_NOT_IMPLEMENTED',
-            'message': 'The interface namespace declared in directive is not implemented in handler.'}).get()
         response = lambda_function.lambda_handler(request, None)
         self.assertIsNotNone(response)
         self.assertEqual(response['event']['header']['namespace'], 'Alexa')
@@ -80,6 +70,11 @@ class TestToggle(unittest.TestCase):
         self.assertEqual(response['context']['properties'][0]['instance'], 'Spa.Lights')
         self.assertNotEqual(response['context']['properties'][0]['value'], 'On')
 
+
+mock_server = Thread(target=ms.run_server)
+mock_server.daemon = True
+mock_server.start()
+time.sleep(.1)
 
 if __name__ == '__main__':
     unittest.main()
