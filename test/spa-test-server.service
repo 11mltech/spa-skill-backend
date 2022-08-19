@@ -1,0 +1,13 @@
+[Unit]
+Description=Test Backend services (bottle microservice) for spa home conextion (alexa & google)
+After=network.target
+ 
+[Service]
+Type=simple
+User=lucho
+WorkingDirectory=/home/lucho/spa-skill-backend
+Environment="SPA_TEST_PORT=3434"
+ExecStart=/usr/bin/python3 /home/lucho/spa-skill-backend/test/test-server.py
+ 
+[Install]
+WantedBy=multi-user.target
