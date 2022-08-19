@@ -1,4 +1,5 @@
 import unittest
+import time
 from source import lambda_function
 from lib import alexa_message as message
 from threading import Thread
@@ -150,5 +151,6 @@ class TestToggle(unittest.TestCase):
 mock_server = Thread(target=run_server)
 mock_server.daemon = True
 mock_server.start()
+time.sleep(1)
 if __name__ == '__main__':
     unittest.main()
