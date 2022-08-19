@@ -64,3 +64,7 @@ def device_update(value=None, token=None):
     except KeyError:
         response.status = 400
         return 'Internal spa-token pair map error'
+
+
+if __name__ == '__main__':
+    run_server()
