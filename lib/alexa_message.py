@@ -1,7 +1,14 @@
 import uuid
 import random
 import datetime
+import logging
+from datetime import datetime, timezone
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+def get_utc_timestamp(seconds=None):
+    return datetime.now(timezone.utc).isoformat()
 
 class AlexaResponse:
 
@@ -60,7 +67,7 @@ class AlexaResponse:
             'name': kwargs.get('name', 'connectivity'),
             'value': kwargs.get('value', {'value': 'OK'}),
             'instance': kwargs.get('instance', 'no-instance'),
-            'timeOfSample': datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S"),
+            'timeOfSample': get_utc_timestamp(),
             'uncertaintyInMilliseconds': kwargs.get('uncertainty_in_milliseconds', 0)
         }
 
@@ -139,6 +146,20 @@ class AlexaResponse:
             self.event['payload']['endpoints'] = []
 
         self.event['payload']['endpoints'] = payload_endpoints
+
+# Error wrapper for AlexaResponse
+class ErrorResponse():
+    def __init__(self, request, **kwargs):
+        self.request = request
+        self.typ = kwargs.get('typ', 'INTERNAL_ERROR')
+        self.message = kwargs.get(
+                'message', "An error occurred that isn't described by one of the other error types")
+
+    def get(self):
+        return AlexaResponse(
+            name='ErrorResponse',
+            messageId=self.request['directive']['header']['messageId'],
+            payload={'type': self.typ, 'message': self.message}).get()
 
 
 # Usage: pass arguments as json or use methods to populate request. Pass scope method as parameter for set_endpoint

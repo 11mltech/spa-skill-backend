@@ -3,7 +3,7 @@ import time
 from source import lambda_function
 from lib import alexa_message as message
 from threading import Thread
-from test import microserver as ms
+from test import bottle_test_server as ms
 
 
 class TestCommon(unittest.TestCase):
@@ -17,7 +17,7 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(response['event']['header']['namespace'], 'Alexa')
         self.assertEqual(response['event']['header']['name'], 'ErrorResponse')
         self.assertEqual(response['event']['payload']
-                         ['type'], 'INTERFACE_NOT_IMPLEMENTED')
+                         ['type'], 'INVALID_DIRECTIVE')
 
 
 class TestDiscovery(unittest.TestCase):
