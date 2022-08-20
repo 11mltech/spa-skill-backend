@@ -26,6 +26,22 @@ class TestAcceptGrant(unittest.TestCase):
             grant_code=None, grantee_token='0101').get()
         response = lambda_function.lambda_handler(request, None)
         self.assertIsNotNone(response)
+        self.assertEqual(response['event']['header']
+                         ['namespace'], 'Alexa.Authorization')
+        self.assertEqual(response['event']['header']['name'], 'ErrorResponse')
+        self.assertEqual(response['event']['payload']
+                         ['type'], 'ACCEPT_GRANT_FAILED')
+
+    def test_accept_grant_no_token(self):
+        request = message.AlexaAuthorizationRequest(
+            grant_code="invalid_code", grantee_token=None).get()
+        response = lambda_function.lambda_handler(request, None)
+        self.assertIsNotNone(response)
+        self.assertEqual(response['event']['header']
+                         ['namespace'], 'Alexa.Authorization')
+        self.assertEqual(response['event']['header']['name'], 'ErrorResponse')
+        self.assertEqual(response['event']['payload']
+                         ['type'], 'ACCEPT_GRANT_FAILED')
 
 
 class TestDiscovery(unittest.TestCase):
