@@ -87,8 +87,9 @@ class AcceptGrant(RequestHandler):
 
 class Discover(RequestHandler):
     def handle_request(self):
+        message_id = self.request["directive"]["header"]["messageId"]
         discovery_response = AlexaResponse(
-            namespace='Alexa.Discovery', name='Discover.Response')
+            namespace='Alexa.Discovery', name='Discover.Response', messageId=message_id)
 
         # Create the response and add capabilities.
         capability_alexa = discovery_response.create_payload_endpoint_capability()
