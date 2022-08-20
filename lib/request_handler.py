@@ -32,8 +32,6 @@ class AcceptGrant(RequestHandler):
         auth_code = self.request["directive"]["payload"]["grant"]["code"]
         message_id = self.request["directive"]["header"]["messageId"]
 
-
-
         # The Login With Amazon API for getting access and refresh tokens from an auth code.
         lwa_token_url = "https://api.amazon.com/auth/o2/token"
 
@@ -50,7 +48,8 @@ class AcceptGrant(RequestHandler):
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
         }
 
-        url_request = urllib.request.Request(lwa_token_url, data, headers, "POST")
+        url_request = urllib.request.Request(
+            lwa_token_url, data, headers, "POST")
 
         try:
             with urllib.request.urlopen(url_request) as response:
@@ -70,7 +69,8 @@ class AcceptGrant(RequestHandler):
                 logger.info(f"token_type: {lwa_tokens['token_type']}")
                 logger.info(f"expires_in: {lwa_tokens['expires_in']}")
         except HTTPError as http_error:
-            logger.error(f"An error occurred: {http_error.read().decode('utf-8')}")
+            logger.error(
+                f"An error occurred: {http_error.read().decode('utf-8')}")
             response = ErrorResponse(messageId=message_id,
                                      namespace="Alexa.Authorization",
                                      typ='ACCEPT_GRANT_FAILED',
@@ -116,9 +116,9 @@ class Discover(RequestHandler):
                 friendly_name='Spa',
                 endpoint_id=endpoint['endpoint_id'],
                 capabilities=[capability_alexa,
-                                capability_alexa_powercontroller,
-                                capability_alexa_togglecontroller,
-                                capability_alexa_endpointhealth, ])
+                              capability_alexa_powercontroller,
+                              capability_alexa_togglecontroller,
+                              capability_alexa_endpointhealth, ])
         return discovery_response.get()
 
 
@@ -147,14 +147,15 @@ class Toggle(RequestHandler):
         toggle_response = AlexaResponse(
             namespace='Alexa', name='Response', token=token, correlation_token=correlation_token)
         toggle_response.add_context_property(namespace="Alexa.ToggleController",
-                                                instance=instance, name='toggleState', value=response['status']['state'])
+                                             instance=instance, name='toggleState', value=response['status']['state'])
         return toggle_response.get()
 
 # Error itself doesn't handle an interface request, but acts as an AlexaResponse wrapper for errors
 
+
 class RequestFactory():
     def create_request_response(self, request):
-        messageId=request['directive']['header']['messageId']
+        messageId = request['directive']['header']['messageId']
         # Validate the request is an Alexa smart home directive.
         if 'directive' not in request:
             return ErrorResponse(messageId=messageId, typ='INVALID_DIRECTIVE', message='Directive not in message').get()
@@ -162,7 +163,7 @@ class RequestFactory():
         # Check the payload version.
         payload_version = request['directive']['header']['payloadVersion']
         if payload_version != '3':
-            return ErrorResponse(messageId=messageId, typ='INVALID_DIRECTIVE', message= 'This skill only supports Smart Home API version 3').get()
+            return ErrorResponse(messageId=messageId, typ='INVALID_DIRECTIVE', message='This skill only supports Smart Home API version 3').get()
 
         # Create handler for directive
         namespace = request['directive']['header']['namespace']

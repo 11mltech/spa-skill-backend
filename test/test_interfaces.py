@@ -22,9 +22,11 @@ class TestCommon(unittest.TestCase):
 
 class TestAcceptGrant(unittest.TestCase):
     def test_accept_grant_no_code(self):
-        request = message.AlexaAuthorizationRequest(grant_code=None, grantee_token='0101').get()
+        request = message.AlexaAuthorizationRequest(
+            grant_code=None, grantee_token='0101').get()
         response = lambda_function.lambda_handler(request, None)
         self.assertIsNotNone(response)
+
 
 class TestDiscovery(unittest.TestCase):
 
@@ -66,15 +68,18 @@ class TestToggle(unittest.TestCase):
             endpointId='spa_test_1', token="0101", action="TurnOn", instance='Spa.Lights').get()
         response = lambda_function.lambda_handler(request, None)
 
-        self.assertEqual(response['context']['properties'][0]['instance'], 'Spa.Lights')
+        self.assertEqual(response['context']['properties']
+                         [0]['instance'], 'Spa.Lights')
         self.assertEqual(response['context']['properties'][0]['value'], 'On')
 
         request = message.AlexaToggleRequest(
             endpointId='spa_test_1', token="0101", action="TurnOff", instance='Spa.Lights').get()
         response = lambda_function.lambda_handler(request, None)
 
-        self.assertEqual(response['context']['properties'][0]['instance'], 'Spa.Lights')
-        self.assertNotEqual(response['context']['properties'][0]['value'], 'On')
+        self.assertEqual(response['context']['properties']
+                         [0]['instance'], 'Spa.Lights')
+        self.assertNotEqual(response['context']
+                            ['properties'][0]['value'], 'On')
 
 
 mock_server = Thread(target=ms.run_server)

@@ -15,6 +15,7 @@ client_secret = "Your Client Secret"
 # TODO: Update with your Endpoint Id.
 endpoint_id = "device_id"
 
+
 class DeviceCloud:
 
     def __init__(self, **kwargs):

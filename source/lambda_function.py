@@ -40,6 +40,8 @@ def lambda_handler(request, context):
     return send_response(response)
 
 # Send the response
+
+
 def send_response(response):
     print('lambda_handler response -----')
     print(json.dumps(response))
