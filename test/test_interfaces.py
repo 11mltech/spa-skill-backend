@@ -20,6 +20,12 @@ class TestCommon(unittest.TestCase):
                          ['type'], 'INVALID_DIRECTIVE')
 
 
+class TestAcceptGrant(unittest.TestCase):
+    def test_accept_grant_no_code(self):
+        request = message.AlexaAuthorizationRequest(grant_code=None, grantee_token='0101').get()
+        response = lambda_function.lambda_handler(request, None)
+        self.assertIsNotNone(response)
+
 class TestDiscovery(unittest.TestCase):
 
     def test_discovery_good_token(self):

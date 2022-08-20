@@ -3,9 +3,15 @@ from lib.cloud_apis import DeviceCloud
 
 import logging
 import json
+import urllib.request
+import urllib.parse
+from urllib.error import HTTPError
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+client_id = 'alexa-id'
+client_secret = 'alexa-secret'
 
 namespace_request = {'Alexa.Authorization': 'AcceptGrant',
                      'Alexa.Discovery': 'Discover',
@@ -25,6 +31,8 @@ class AcceptGrant(RequestHandler):
     def handle_request(self):
         auth_code = self.request["directive"]["payload"]["grant"]["code"]
         message_id = self.request["directive"]["header"]["messageId"]
+
+
 
         # The Login With Amazon API for getting access and refresh tokens from an auth code.
         lwa_token_url = "https://api.amazon.com/auth/o2/token"
@@ -63,42 +71,16 @@ class AcceptGrant(RequestHandler):
                 logger.info(f"expires_in: {lwa_tokens['expires_in']}")
         except HTTPError as http_error:
             logger.error(f"An error occurred: {http_error.read().decode('utf-8')}")
-
-            # Build the failure response to send to Alexa
-            response = {
-                "event": {
-                    "header": {
-                        "messageId": message_id,
-                        "namespace": "Alexa.Authorization",
-                        "name": "ErrorResponse",
-                        "payloadVersion": "3"
-                    },
-                    "payload": {
-                        "type": "ACCEPT_GRANT_FAILED",
-                        "message": "Failed to retrieve the LWA tokens from the user's auth code."
-                    }
-                }
-            }
+            response = ErrorResponse(messageId=message_id,
+                                     namespace="Alexa.Authorization",
+                                     typ='ACCEPT_GRANT_FAILED',
+                                     message="Failed to retrieve the LWA tokens from the user's auth code.")
         else:
             # Build the success response to send to Alexa
-            response = {
-                "event": {
-                    "header": {
-                        "namespace": "Alexa.Authorization",
-                        "name": "AcceptGrant.Response",
-                        "messageId": message_id,
-                        "payloadVersion": "3"
-                    },
-                    "payload": {}
-                }
-            }
-
-        logger.info(f"accept grant response: {json.dumps(response)}")
-        auth_response = AlexaResponse(message_id=response['event']['header']['messageId'],
-                                          namespace=response['event']['header']['namespace'],
-                                          name=response['event']['header']['name'],
-                                          payload=response['event']['payload'])
-        return auth_response.get()
+            response = AlexaResponse(namespace="Alexa.Authorization",
+                                     name="AcceptGrant.Response",
+                                     messageId=message_id)
+        return response.get()
 
 
 class Discover(RequestHandler):
@@ -172,19 +154,20 @@ class Toggle(RequestHandler):
 
 class RequestFactory():
     def create_request_response(self, request):
+        messageId=request['directive']['header']['messageId']
         # Validate the request is an Alexa smart home directive.
         if 'directive' not in request:
-            return ErrorResponse(request, typ='INVALID_DIRECTIVE', message='Directive not in message').get()
+            return ErrorResponse(messageId=messageId, typ='INVALID_DIRECTIVE', message='Directive not in message').get()
 
         # Check the payload version.
         payload_version = request['directive']['header']['payloadVersion']
         if payload_version != '3':
-            return ErrorResponse(request, typ='INVALID_DIRECTIVE', message= 'This skill only supports Smart Home API version 3').get()
+            return ErrorResponse(messageId=messageId, typ='INVALID_DIRECTIVE', message= 'This skill only supports Smart Home API version 3').get()
 
         # Create handler for directive
         namespace = request['directive']['header']['namespace']
         try:
             targetclass = namespace_request[namespace]
         except KeyError:
-            return ErrorResponse(request, typ='INVALID_DIRECTIVE', message='Unimplemented interface.').get()
+            return ErrorResponse(messageId=messageId, typ='INVALID_DIRECTIVE', message='Unimplemented interface.').get()
         return globals()[targetclass](request).handle_request()

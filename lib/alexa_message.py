@@ -7,8 +7,10 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+
 def get_utc_timestamp(seconds=None):
     return datetime.now(timezone.utc).isoformat()
+
 
 class AlexaResponse:
 
@@ -43,7 +45,7 @@ class AlexaResponse:
         if 'cookie' in kwargs:
             self.event['endpoint']['cookie'] = kwargs.get('cookie', '{}')
 
-        # No endpoint property in an AcceptGrant or Discover request.
+        # No endpoint property in an AcceptGrant or Discover response event.
         if self.event['header']['name'] == 'AcceptGrant.Response' or self.event['header']['name'] == 'Discover.Response':
             self.event.pop('endpoint')
 
@@ -133,6 +135,10 @@ class AlexaResponse:
             if len(response['context']) < 1:
                 response.pop('context')
 
+        if response['event']['header']['name'] == 'ErrorResponse':
+            logger.error(f"response: {response}")
+        else:
+            logger.info(f"response: {response}")
         return response
 
     def set_payload(self, payload):
@@ -147,22 +153,22 @@ class AlexaResponse:
 
         self.event['payload']['endpoints'] = payload_endpoints
 
-# Error wrapper for AlexaResponse
-class ErrorResponse():
-    def __init__(self, request, **kwargs):
-        self.request = request
+
+class ErrorResponse(AlexaResponse):
+    def __init__(self, **kwargs):
+        self.messageId = kwargs.get('messageId', str(uuid.uuid4()))
         self.typ = kwargs.get('typ', 'INTERNAL_ERROR')
         self.message = kwargs.get(
-                'message', "An error occurred that isn't described by one of the other error types")
+            'message', "An error occurred that isn't described by one of the other error types")
 
-    def get(self):
-        return AlexaResponse(
-            name='ErrorResponse',
-            messageId=self.request['directive']['header']['messageId'],
-            payload={'type': self.typ, 'message': self.message}).get()
-
-
+        super().__init__(payload={'type': self.typ, 'message': self.message},
+                         namespace=kwargs.get('namespace', 'Alexa'),
+                         name='ErrorResponse',
+                         messageId=self.messageId)
+        self.event.pop('endpoint')
 # Usage: pass arguments as json or use methods to populate request. Pass scope method as parameter for set_endpoint
+
+
 class AlexaRequest:
     def __init__(self, **kwargs):
         # Set up the request structure.
@@ -193,12 +199,6 @@ class AlexaRequest:
         }
         return self
 
-    def scope(self, token, type='BearerToken'):
-        return {
-            "type": type,
-            "token": token
-        }
-
     def get(self):
         return {
             'directive': {
@@ -215,7 +215,8 @@ class AlexaDiscoveryRequest(AlexaRequest):
         super().__init__()
 
         self.set_header(namespace="Alexa.Discovery", name="Discover")
-        self.set_payload({'scope': self.scope(kwargs.get('token', None))})
+        self.set_payload(
+            {'scope': {"type": 'BearerToken', "token": kwargs.get('token', None)}})
 
     def get(self):
         return {
@@ -232,9 +233,25 @@ class AlexaToggleRequest(AlexaRequest):
         super().__init__()
         self.set_header(namespace="Alexa.ToggleController", name=action,
                         instance=kwargs.get('instance', 'Spa.Lights'))
-        self.set_endpoint(endpointId, self.scope(token), cookie=None)
+        self.set_endpoint(
+            endpointId, {"type": 'BearerToken', "token": token}, cookie=None)
 
     def set_header(self, namespace, name, instance):
         super().set_header(namespace, name)
         self.header['instance'] = instance
         return self
+
+
+class AlexaAuthorizationRequest(AlexaRequest):
+    def __init__(self, grant_code, grantee_token, **kwargs):
+        super().__init__(**kwargs)
+        self.set_header(namespace="Alexa.Authorization", name="AcceptGrant")
+        self.set_payload({
+            "grant": {
+                "type": "OAuth2.AuthorizationCode",
+                "code": grant_code
+            },
+            "grantee": {
+                "type": "BearerToken",
+                "token": grantee_token
+            }})
