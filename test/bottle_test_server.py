@@ -3,7 +3,8 @@ from bottle import Bottle, run, response
 spa_map = {
     "0101": "spa_test_1",
     "0202": "spa_test_2",
-    "0303": "spa_test_3"
+    "0303": "spa_test_3",
+    "este-es-nuestro.access.token":"spa_test_4"
 }
 
 spa_state = {

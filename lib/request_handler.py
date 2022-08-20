@@ -48,6 +48,8 @@ class AcceptGrant(RequestHandler):
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
         }
 
+        logger.info(f'AcceptGrant POST data: {data}')
+
         url_request = urllib.request.Request(
             lwa_token_url, data, headers, "POST")
 
@@ -105,10 +107,11 @@ class Discover(RequestHandler):
             toggle_response = json.loads(self.server.device_discovery(
                 token=self.request['directive']['payload']['scope']['token']))
         except:
-            return AlexaResponse(
+            return ErrorResponse(
                 namespace='Alexa.Discovery',
                 name='Discovery.ErrorResponse',
-                payload={'type': 'HTTP_ERROR', 'message': 'Got HTTPError for directive request. Token not found'}).get()
+                typ='HTTP_ERROR',
+                message='Got HTTPError for directive request. Token not found').get()
 
         # Gather endpoints with response and send back to Alexa
         for endpoint in toggle_response['endpoints']:

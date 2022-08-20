@@ -1,9 +1,20 @@
 import unittest
+import os
 import time
+import pytest
 from source import lambda_function
 from lib import alexa_message as message
 from threading import Thread
 from test import bottle_test_server as ms
+
+
+os.environ['cloud_host'] = 'localhost'
+os.environ['cloud_port'] = '3434'
+os.environ['cloud_schema'] = 'http'
+
+# os.environ['cloud_host'] = 'milonet.duckdns.org'
+# os.environ['cloud_port'] = ''
+# os.environ['cloud_schema'] = 'https'
 
 
 class TestCommon(unittest.TestCase):

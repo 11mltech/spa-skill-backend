@@ -135,7 +135,7 @@ class AlexaResponse:
             if len(response['context']) < 1:
                 response.pop('context')
 
-        if response['event']['header']['name'] == 'ErrorResponse':
+        if 'ErrorResponse' in response['event']['header']['name']:
             logger.error(f"response: {response}")
         else:
             logger.info(f"response: {response}")
@@ -163,7 +163,7 @@ class ErrorResponse(AlexaResponse):
 
         super().__init__(payload={'type': self.typ, 'message': self.message},
                          namespace=kwargs.get('namespace', 'Alexa'),
-                         name='ErrorResponse',
+                         name=kwargs.get('name', 'ErrorResponse'),
                          messageId=self.messageId)
         self.event.pop('endpoint')
 # Usage: pass arguments as json or use methods to populate request. Pass scope method as parameter for set_endpoint
