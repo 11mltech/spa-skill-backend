@@ -60,8 +60,9 @@ class AlexaResponse:
 
         self.cookies[key] = value
 
-    def add_payload_endpoint(self, **kwargs):
-        self.payload_endpoints.append(self.create_payload_endpoint(**kwargs))
+    def add_payload_endpoint(self, endpoint_id, **kwargs):
+        self.payload_endpoints.append(
+            self.create_payload_endpoint(endpoint_id, **kwargs))
 
     def create_context_property(self, **kwargs):
         return {
@@ -73,25 +74,21 @@ class AlexaResponse:
             'uncertaintyInMilliseconds': kwargs.get('uncertainty_in_milliseconds', 0)
         }
 
-    def create_payload_endpoint(self, **kwargs):
+    def create_payload_endpoint(self, endpoint_id, **kwargs):
         # Return the proper structure expected for the endpoint.
         # All discovery responses must include the additionAttributes
         additionalAttributes = {
-            'manufacturer': kwargs.get('manufacturer', 'Whole Electronic Solutions'),
-            'model': kwargs.get('model_name', 'Sample Model'),
-            'serialNumber': kwargs.get('serial_number', 'U11112233456'),
-            'firmwareVersion': kwargs.get('firmware_version', '1.24.2546'),
-            'softwareVersion': kwargs.get('software_version', '1.036'),
-            'customIdentifier': kwargs.get('custom_identifier', 'Sample custom ID')
+            'manufacturer': kwargs.get('manufacturer', 'Applied Computer Controls'),
+            'model': kwargs.get('model_name', 'ACCSSPA-MODEL-NAME'),
         }
 
         endpoint = {
             'capabilities': kwargs.get('capabilities', []),
-            'description': kwargs.get('description', 'spa controller application'),
-            'displayCategories': kwargs.get('display_categories', ['THERMOSTAT']),
-            'endpointId': kwargs.get('endpoint_id', 'endpoint_' + "%0.6d" % random.randint(0, 999999)),
-            'friendlyName': kwargs.get('friendly_name', 'wes-spa'),
-            'manufacturerName': kwargs.get('manufacturer_name', 'Whole Electronic Solutions')
+            'description': kwargs.get('description', 'spa-description'),
+            'displayCategories': kwargs.get('display_categories', ['THERMOSTAT', 'LIGHT']),
+            'endpointId': endpoint_id,
+            'friendlyName': kwargs.get('friendly_name', 'ACC Spa'),
+            'manufacturerName': kwargs.get('manufacturer_name', 'Applied Computer Controls')
         }
 
         endpoint['additionalAttributes'] = kwargs.get(
@@ -106,8 +103,15 @@ class AlexaResponse:
         capability = {
             'type': kwargs.get('type', 'AlexaInterface'),
             'interface': kwargs.get('interface', 'Alexa'),
-            'version': kwargs.get('version', '3')
+            'version': kwargs.get('version', '3'),
         }
+
+        if 'instance' in kwargs:
+            capability['instance'] = kwargs.get('instance')
+        if 'capabilityResources' in kwargs:
+            capability['capabilityResources'] = kwargs.get(
+                'capabilityResources')
+
         supported = kwargs.get('supported', None)
         if supported:
             capability['properties'] = {}
@@ -117,6 +121,18 @@ class AlexaResponse:
             capability['properties']['retrievable'] = kwargs.get(
                 'retrievable', False)
         return capability
+    
+    def create_capability_resources(self, **kwargs):
+        return {
+            "friendlyNames":
+            [{
+                "@type": kwargs.get('@type', 'text'),
+                "value": {
+                    "text": kwargs.get('value_text', 'Spa toggleswitch'),
+                    "locale": kwargs.get('locale', 'en-US')
+                }
+            }]
+        }
 
     def get(self, remove_empty=True):
 
@@ -167,6 +183,71 @@ class ErrorResponse(AlexaResponse):
                          messageId=self.messageId)
         self.event.pop('endpoint')
 # Usage: pass arguments as json or use methods to populate request. Pass scope method as parameter for set_endpoint
+
+
+class DiscoveryResponse(AlexaResponse):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def get_example(self):
+        return {
+            "event": {
+                "header": {
+                    "namespace": "Alexa.Discovery",
+                    "name": "Discover.Response",
+                    "messageId": "b1800c2e-f67b-43a3-972d-b26b3d028a05",
+                    "payloadVersion": "3"
+                },
+                "payload": {
+                    "endpoints": [
+                        {
+                            "capabilities": [
+                                {
+                                    "type": "AlexaInterface",
+                                    "interface": "Alexa",
+                                    "version": "3"
+                                },
+                                {
+                                    "type": "AlexaInterface",
+                                    "interface": "Alexa.ToggleController",
+                                    "version": "3",
+                                    "instance": "Spa.Lights",
+                                    "retrievable": True,
+                                    "properties": {
+                                            "supported": [
+                                                {
+                                                    "name": "toggleState"
+                                                }
+                                            ]
+                                    },
+                                    "capabilityResources": {
+                                        "friendlyNames": [
+                                            {
+                                                "@type": "text",
+                                                "value": {
+                                                    "text": "Spa lights",
+                                                    "locale": "en-US"
+                                                }
+                                            }]
+                                    }
+                                }
+                            ],
+                            "description": "spa-description",
+                            "displayCategories": [
+                                "THERMOSTAT",
+                            ],
+                            "endpointId": "spa_test_4",
+                            "friendlyName": "ACC Spa",
+                            "manufacturerName": "Applied Computer Controls",
+                            "additionalAttributes": {
+                                "manufacturer": "Applied Computer Controls",
+                                "model": "ACCSSPA-MODEL-NAME"
+                            }
+                        }
+                    ]
+                }
+            }
+        }
 
 
 class AlexaRequest:

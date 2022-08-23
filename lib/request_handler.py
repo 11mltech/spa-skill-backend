@@ -1,4 +1,4 @@
-from lib.alexa_message import AlexaResponse, ErrorResponse
+from lib.alexa_message import AlexaResponse, ErrorResponse, DiscoveryResponse
 from lib.cloud_apis import DeviceCloud
 
 import logging
@@ -88,41 +88,41 @@ class AcceptGrant(RequestHandler):
 class Discover(RequestHandler):
     def handle_request(self):
         message_id = self.request["directive"]["header"]["messageId"]
-        discovery_response = AlexaResponse(
+        discovery_response = DiscoveryResponse(
             namespace='Alexa.Discovery', name='Discover.Response', messageId=message_id)
 
         # Create the response and add capabilities.
         capability_alexa = discovery_response.create_payload_endpoint_capability()
-        capability_alexa_powercontroller = discovery_response.create_payload_endpoint_capability(
-            interface='Alexa.PowerController',
-            supported=[{'name': 'powerState'}])
+
+        spa_lights_capability_resources = discovery_response.create_capability_resources(
+            value_text='Spa Lights')
         capability_alexa_togglecontroller = discovery_response.create_payload_endpoint_capability(
             interface='Alexa.ToggleController',
-            supported=[{'name': 'toggleState', 'instance': 'Spa.Lights'}])
-        capability_alexa_endpointhealth = discovery_response.create_payload_endpoint_capability(
-            interface='Alexa.EndpointHealth',
-            supported=[{'name': 'connectivity'}])
+            instance='Spa.Lights',
+            supported=[{'name': 'toggleState'}],
+            capabilityResources=spa_lights_capability_resources,
+            retrievable=True)
 
         # Get user's information from cloud server with token provided in request
         try:
             toggle_response = json.loads(self.server.device_discovery(
                 token=self.request['directive']['payload']['scope']['token']))
-        except:
+        except HTTPError as http_error:
+            logger.error(
+                f"An error occurred: {http_error.read().decode('utf-8')}")
             return ErrorResponse(
                 namespace='Alexa.Discovery',
                 name='Discovery.ErrorResponse',
-                typ='HTTP_ERROR',
-                message='Got HTTPError for directive request. Token not found').get()
+                typ='DISCOVERY_FAILED',
+                message='Got HTTPError for directive request').get()
+
 
         # Gather endpoints with response and send back to Alexa
         for endpoint in toggle_response['endpoints']:
             discovery_response.add_payload_endpoint(
-                friendly_name='Spa',
-                endpoint_id=endpoint['endpoint_id'],
+                endpoint['endpoint_id'],
                 capabilities=[capability_alexa,
-                              capability_alexa_powercontroller,
-                              capability_alexa_togglecontroller,
-                              capability_alexa_endpointhealth, ])
+                              capability_alexa_togglecontroller])
         return discovery_response.get()
 
 

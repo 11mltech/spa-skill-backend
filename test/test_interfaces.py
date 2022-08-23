@@ -71,6 +71,8 @@ class TestDiscovery(unittest.TestCase):
         for endpoint in response['event']['payload']['endpoints']:
             for capability in endpoint['capabilities']:
                 interfaces.append(capability['interface'])
+                if capability['interface'] == 'Alexa.ToggleController':
+                    self.assertIn("capabilityResources", capability.keys())
         self.assertIn('Alexa.ToggleController', interfaces)
 
         endpoints = []

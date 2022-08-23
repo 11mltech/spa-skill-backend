@@ -19,6 +19,10 @@ spa_state = {
     "spa_test_3":
     {
         'lights': 'Off'
+    },
+    "spa_test_4":
+    {
+        'lights': 'Off'
     }
 }
 
