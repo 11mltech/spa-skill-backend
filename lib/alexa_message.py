@@ -169,6 +169,12 @@ class AlexaResponse:
 
         self.event['payload']['endpoints'] = payload_endpoints
 
+class StateResponse(AlexaResponse):
+    def __init__(self, **kwargs):
+        super().__init__(namespace='Alexa', name='StateReport', **kwargs)
+    
+        self.context = kwargs.get('context', {"properties":[]})
+
 
 class ErrorResponse(AlexaResponse):
     def __init__(self, **kwargs):
@@ -336,3 +342,11 @@ class AlexaAuthorizationRequest(AlexaRequest):
                 "type": "BearerToken",
                 "token": grantee_token
             }})
+
+
+class AlexaStateRequest(AlexaRequest):
+    def __init__(self, endpointId, token, **kwargs):
+        super().__init__(**kwargs)
+        self.set_header(namespace="Alexa", name="ReportState")
+        self.set_endpoint(
+            endpointId, {"type": 'BearerToken', "token": token}, cookie=None)

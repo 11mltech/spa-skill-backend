@@ -4,8 +4,10 @@ import time
 import pytest
 from source import lambda_function
 from lib import alexa_message as message
+from lib.request_handler import RequestFactory, ReportState
 from threading import Thread
 from test import bottle_test_server as ms
+from contextlib import suppress
 
 
 os.environ['cloud_host'] = 'localhost'
@@ -109,6 +111,70 @@ class TestToggle(unittest.TestCase):
                          [0]['instance'], 'Spa.Lights')
         self.assertNotEqual(response['context']
                             ['properties'][0]['value'], 'On')
+
+
+class TestReportState(unittest.TestCase):
+    def test_directive(self):
+        request = message.AlexaStateRequest(
+            endpointId='spa_test_1', token="0101").get()
+        self.assertIn('directive', request)
+        self.assertIn('header', request['directive'])
+        self.assertIn('namespace', request['directive']['header'])
+        self.assertIn('name', request['directive']['header'])
+        self.assertIn('messageId', request['directive']['header'])
+        self.assertEqual(request['directive']['header']['namespace'], 'Alexa')
+        self.assertEqual(request['directive']['header']['name'], 'ReportState')
+        self.assertIn('endpoint', request['directive'])
+        self.assertIn('scope', request['directive']['endpoint'])
+        self.assertIn('type', request['directive']['endpoint']['scope'])
+        self.assertEqual(request['directive']['endpoint']
+                         ['scope']['type'], 'BearerToken')
+        self.assertIn('token', request['directive']['endpoint']['scope'])
+        self.assertEqual(request['directive']['endpoint']
+                         ['scope']['token'], '0101')
+        self.assertIn('endpointId', request['directive']['endpoint'])
+        self.assertEqual(request['directive']['endpoint']
+                         ['endpointId'], 'spa_test_1')
+
+    def test_handler(self):
+        request = message.AlexaStateRequest(
+            endpointId='este-es-nuestro.access.token', token="0101").get()
+        response = ReportState(request).handle_request()
+        self.assertIn('event', response)
+        self.assertIn('header', response['event'])
+        self.assertIn('namespace', response['event']['header'])
+        self.assertEqual(response['event']['header']['namespace'], 'Alexa')
+        self.assertEqual(response['event']['header']['name'], 'StateReport')
+        self.assertNotEqual(response['event']['header']['messageId'],
+                            request['directive']['header']['messageId'])
+
+        self.assertIn('context', response)
+
+        properties = response['context']['properties']
+        self.assertTrue(len(properties) > 0)
+        self.assertTrue(0) 
+
+    def test_response(self):
+        response = message.StateResponse(endpoint_id='spa_test_1').get()
+        self.assertEqual(response['event']['header']['namespace'], 'Alexa')
+        self.assertEqual(response['event']['header']['name'], 'StateReport')
+        self.assertIn('endpoint', response['event'])
+        self.assertIn('endpointId', response['event']['endpoint'])
+        self.assertEqual(response['event']['endpoint']
+                         ['endpointId'], 'spa_test_1')
+
+        self.assertIn('context', response)
+        self.assertIn('properties', response['context'])
+
+    def test_begin_to_end(self):
+        request = message.AlexaStateRequest(
+            endpointId='este-es-nuestro.access.token', token="0101").get()
+        response = lambda_function.lambda_handler(request, None)
+        self.assertIn('event', response)
+        self.assertIn('header', response['event'])
+        self.assertIn('namespace', response['event']['header'])
+        self.assertEqual(response['event']['header']['namespace'], 'Alexa')
+        self.assertEqual(response['event']['header']['name'], 'StateReport')
 
 
 mock_server = Thread(target=ms.run_server)

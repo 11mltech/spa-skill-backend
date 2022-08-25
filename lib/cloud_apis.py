@@ -37,6 +37,9 @@ class DeviceCloud:
                        self.endpoints['update_state'], device, value, token])
         return self.get_request(url)
 
+    def report_state(self, endpoint_id):
+        return [{'Instance': 'tu vieja'}]
+
     def get_request(self, url):
         req = urllib.request.Request(url)
         try:
@@ -48,3 +51,5 @@ class DeviceCloud:
         except urllib.error.HTTPError as HTTPError:
             logger.error(f'GET {url} response error')
             raise HTTPError
+
+

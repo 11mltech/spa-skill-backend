@@ -1,4 +1,4 @@
-from lib.alexa_message import AlexaResponse, ErrorResponse, DiscoveryResponse
+from lib.alexa_message import AlexaResponse, ErrorResponse, DiscoveryResponse, StateResponse
 from lib.cloud_apis import DeviceCloud
 
 import logging
@@ -24,13 +24,12 @@ class RequestHandler():
         self.server = DeviceCloud()
 
     def handle_request(self):
-        return AlexaResponse()
+        return AlexaResponse().get()
 
 
 class AcceptGrant(RequestHandler):
     def handle_request(self):
         auth_code = self.request["directive"]["payload"]["grant"]["code"]
-        message_id = self.request["directive"]["header"]["messageId"]
 
         # The Login With Amazon API for getting access and refresh tokens from an auth code.
         lwa_token_url = "https://api.amazon.com/auth/o2/token"
@@ -73,23 +72,20 @@ class AcceptGrant(RequestHandler):
         except HTTPError as http_error:
             logger.error(
                 f"An error occurred: {http_error.read().decode('utf-8')}")
-            response = ErrorResponse(messageId=message_id,
-                                     namespace="Alexa.Authorization",
+            response = ErrorResponse(namespace="Alexa.Authorization",
                                      typ='ACCEPT_GRANT_FAILED',
                                      message="Failed to retrieve the LWA tokens from the user's auth code.")
         else:
             # Build the success response to send to Alexa
             response = AlexaResponse(namespace="Alexa.Authorization",
-                                     name="AcceptGrant.Response",
-                                     messageId=message_id)
+                                     name="AcceptGrant.Response")
         return response.get()
 
 
 class Discover(RequestHandler):
     def handle_request(self):
-        message_id = self.request["directive"]["header"]["messageId"]
         discovery_response = DiscoveryResponse(
-            namespace='Alexa.Discovery', name='Discover.Response', messageId=message_id)
+            namespace='Alexa.Discovery', name='Discover.Response')
 
         # Create the response and add capabilities.
         capability_alexa = discovery_response.create_payload_endpoint_capability()
@@ -116,7 +112,6 @@ class Discover(RequestHandler):
                 typ='DISCOVERY_FAILED',
                 message='Got HTTPError for directive request').get()
 
-
         # Gather endpoints with response and send back to Alexa
         for endpoint in toggle_response['endpoints']:
             discovery_response.add_payload_endpoint(
@@ -124,6 +119,19 @@ class Discover(RequestHandler):
                 capabilities=[capability_alexa,
                               capability_alexa_togglecontroller])
         return discovery_response.get()
+
+
+class ReportState(RequestHandler):
+    def handle_request(self):
+        properties = self.get_properties()
+        context = {'properties': properties}
+        response = StateResponse(context = context)
+        return response.get()
+
+    def get_properties(self):
+        endpoint_id = self.request['directive']['endpoint']['endpointId']
+        properties = self.server.report_state(endpoint_id)
+        return properties
 
 
 class Toggle(RequestHandler):
@@ -162,17 +170,17 @@ class RequestFactory():
         messageId = request['directive']['header']['messageId']
         # Validate the request is an Alexa smart home directive.
         if 'directive' not in request:
-            return ErrorResponse(messageId=messageId, typ='INVALID_DIRECTIVE', message='Directive not in message').get()
+            return ErrorResponse(typ='INVALID_DIRECTIVE', message='Directive not in message').get()
 
         # Check the payload version.
         payload_version = request['directive']['header']['payloadVersion']
         if payload_version != '3':
-            return ErrorResponse(messageId=messageId, typ='INVALID_DIRECTIVE', message='This skill only supports Smart Home API version 3').get()
+            return ErrorResponse(typ='INVALID_DIRECTIVE', message='This skill only supports Smart Home API version 3').get()
 
         # Create handler for directive
         namespace = request['directive']['header']['namespace']
         try:
             targetclass = namespace_request[namespace]
         except KeyError:
-            return ErrorResponse(messageId=messageId, typ='INVALID_DIRECTIVE', message='Unimplemented interface.').get()
+            return ErrorResponse(typ='INVALID_DIRECTIVE', message='Unimplemented interface.').get()
         return globals()[targetclass](request).handle_request()
