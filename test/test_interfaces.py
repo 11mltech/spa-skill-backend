@@ -168,18 +168,30 @@ class TestToggle(unittest.TestCase):
             endpointId='spa_test_1', token="0101", action="TurnOn", instance='Spa.Lights').get()
         response = lambda_function.lambda_handler(request, None)
 
-        self.assertEqual(response['context']['properties']
-                         [0]['instance'], 'Spa.Lights')
-        self.assertEqual(response['context']['properties'][0]['value'], 'On')
-
-        request = message.AlexaToggleRequest(
-            endpointId='spa_test_1', token="0101", action="TurnOff", instance='Spa.Lights').get()
-        response = lambda_function.lambda_handler(request, None)
-
-        self.assertEqual(response['context']['properties']
-                         [0]['instance'], 'Spa.Lights')
-        self.assertNotEqual(response['context']
-                            ['properties'][0]['value'], 'On')
+        self.assertIn('event', response)
+        self.assertIn('header', response['event'])
+        self.assertIn('namespace', response['event']['header'])
+        self.assertEqual(response['event']['header']['namespace'], 'Alexa')
+        self.assertEqual(response['event']['header']['name'], 'Response')
+        self.assertNotEqual(response['event']['header']['messageId'],
+                            request['directive']['header']['messageId'])
+        self.assertEqual(response['event']['header']['correlationToken'],
+                         request['directive']['header']['correlationToken'])
+        self.assertIn('endpointId', response['event']['endpoint'])
+        self.assertEqual(response['event']['endpoint']
+                         ['endpointId'], 'spa_test_1')
+        self.assertIn('context', response)
+        self.assertIn('properties', response['context'])
+        found = False
+        for prop in response['context']['properties']:
+            with suppress(KeyError):
+                if prop['instance'] == "Spa.Lights":
+                    found = True
+                    self.assertEqual(prop['namespace'],
+                                     'Alexa.ToggleController')
+                    self.assertEqual(prop['name'], 'toggleState')
+                    self.assertEqual(prop['value'], 'On')
+        self.assertTrue(found)
 
 
 class TestReportState(unittest.TestCase):

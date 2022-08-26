@@ -180,7 +180,7 @@ class Toggle(RequestHandler):
                 payload={'type': 'HTTP_ERROR', 'message': 'Got HTTPError for directive request. Token not found'}).get()
 
         toggle_response = AlexaResponse(
-            namespace='Alexa', name='Response', token=token, correlationToken=self.correlationToken)
+            namespace='Alexa', name='Response', token=token, correlationToken=self.correlationToken, endpointId=endpoint_id)
         toggle_response.add_context_property(namespace="Alexa.ToggleController",
                                              instance=instance, name='toggleState', value=response['status']['state'])
         return toggle_response.get()
