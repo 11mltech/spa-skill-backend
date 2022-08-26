@@ -1,10 +1,14 @@
 import unittest
 import os
 import time
+from urllib.error import HTTPError
 import pytest
 from source import lambda_function
 from lib import alexa_message as message
-from lib.request_handler import RequestFactory, ReportState
+from lib.request_handler import RequestFactory, ReportState, Toggle
+from lib.cloud_apis import DeviceCloud
+import urllib.error
+import json
 from threading import Thread
 from test import bottle_test_server as ms
 from contextlib import suppress
@@ -94,6 +98,71 @@ class TestDiscovery(unittest.TestCase):
 
 class TestToggle(unittest.TestCase):
 
+    def test_directive(self):
+        endpointId = "spa_test_1"
+        token = "0101"
+        action = "TurnOn"
+        request = message.AlexaToggleRequest(endpointId, token, action).get()
+        self.assertIn('directive', request)
+        self.assertIn('header', request['directive'])
+        self.assertIn('namespace', request['directive']['header'])
+        self.assertIn('name', request['directive']['header'])
+        self.assertIn('messageId', request['directive']['header'])
+        self.assertEqual(request['directive']['header']
+                         ['namespace'], 'Alexa.ToggleController')
+        self.assertEqual(request['directive']['header']['name'], 'TurnOn')
+        self.assertIn('endpoint', request['directive'])
+        self.assertIn('scope', request['directive']['endpoint'])
+        self.assertIn('type', request['directive']['endpoint']['scope'])
+        self.assertEqual(request['directive']['endpoint']
+                         ['scope']['type'], 'BearerToken')
+        self.assertIn('token', request['directive']['endpoint']['scope'])
+        self.assertEqual(request['directive']['endpoint']
+                         ['scope']['token'], '0101')
+        self.assertIn('endpointId', request['directive']['endpoint'])
+        self.assertEqual(request['directive']['endpoint']
+                         ['endpointId'], 'spa_test_1')
+
+    def test_server(self):
+        server = DeviceCloud()
+        endpointId = "spa_test_1"
+        token = "0101"
+        action = "TurnOn"
+        instance = 'Spa.Lights'
+        # with self.assertRaises(urllib.error.HTTPError):
+        #     server.update_device_state('no-endpoint', instance, action, token)
+        response = json.loads(server.update_device_state(
+            endpointId, instance, action, token))
+        self.assertEqual(
+            response, {'status': {'endpoint_id': 'spa_test_1', 'state': 'On'}})
+
+    def test_handler(self):
+        endpointId = "spa_test_1"
+        token = "0101"
+        action = "TurnOn"
+        request = message.AlexaToggleRequest(endpointId, token, action).get()
+        response = Toggle(request).handle_request()
+        self.assertIn('event', response)
+        self.assertIn('header', response['event'])
+        self.assertIn('namespace', response['event']['header'])
+        self.assertEqual(response['event']['header']['namespace'], 'Alexa')
+        self.assertEqual(response['event']['header']['name'], 'Response')
+        self.assertNotEqual(response['event']['header']['messageId'],
+                            request['directive']['header']['messageId'])
+
+        self.assertIn('context', response)
+        self.assertIn('properties', response['context'])
+        found = False
+        for prop in response['context']['properties']:
+            with suppress(KeyError):
+                if prop['instance'] == "Spa.Lights":
+                    found = True
+                    self.assertEqual(prop['namespace'],
+                                      'Alexa.ToggleController')
+                    self.assertEqual(prop['name'], 'toggleState')
+                    self.assertEqual(prop['value'], 'On')
+        self.assertTrue(found)
+
     def test_toggle(self):
         request = message.AlexaToggleRequest(
             endpointId='spa_test_1', token="0101", action="TurnOn", instance='Spa.Lights').get()
@@ -116,7 +185,7 @@ class TestToggle(unittest.TestCase):
 class TestReportState(unittest.TestCase):
     def test_directive(self):
         request = message.AlexaStateRequest(
-            endpointId='spa_test_1', token="0101").get()
+            endpointId='spa_test_2', token="0202").get()
         self.assertIn('directive', request)
         self.assertIn('header', request['directive'])
         self.assertIn('namespace', request['directive']['header'])
@@ -131,14 +200,21 @@ class TestReportState(unittest.TestCase):
                          ['scope']['type'], 'BearerToken')
         self.assertIn('token', request['directive']['endpoint']['scope'])
         self.assertEqual(request['directive']['endpoint']
-                         ['scope']['token'], '0101')
+                         ['scope']['token'], '0202')
         self.assertIn('endpointId', request['directive']['endpoint'])
         self.assertEqual(request['directive']['endpoint']
-                         ['endpointId'], 'spa_test_1')
+                         ['endpointId'], 'spa_test_2')
+
+    def test_server(self):
+        server = DeviceCloud()
+        with self.assertRaises(urllib.error.HTTPError):
+            server.report_state('no-endpoint')
+        response = json.loads(server.report_state('spa_test_2'))
+        self.assertEqual(response, {'lights': 'Off'})
 
     def test_handler(self):
         request = message.AlexaStateRequest(
-            endpointId='este-es-nuestro.access.token', token="0101").get()
+            endpointId='spa_test_2', token='0202').get()
         response = ReportState(request).handle_request()
         self.assertIn('event', response)
         self.assertIn('header', response['event'])
@@ -149,32 +225,64 @@ class TestReportState(unittest.TestCase):
                             request['directive']['header']['messageId'])
 
         self.assertIn('context', response)
+        self.assertIn('properties', response['context'])
+        found = False
+        for prop in response['context']['properties']:
+            with suppress(KeyError):
+                if prop['instance'] == "Spa.Lights":
+                    found = True
+                    self.assertEqual(prop['namespace'], 'Alexa.ToggleController')
+                    self.assertEqual(prop['name'], 'toggleState')
+                    self.assertEqual(prop['value'], 'Off')
+        self.assertTrue(found)
 
-        properties = response['context']['properties']
-        self.assertTrue(len(properties) > 0)
-        self.assertTrue(0) 
+    def test_get_properties(self):
+        request = message.AlexaStateRequest(
+            endpointId='spa_test_2', token='0202').get()
+        properties = ReportState(request).get_properties()
+        self.assertTrue(properties, {'Spa.Lights': 'Off'})
+
+        request = message.AlexaStateRequest(
+            endpointId='no-endpoint', token='0111').get()
+        with self.assertRaises(urllib.error.HTTPError):
+            properties = ReportState(request).get_properties()
 
     def test_response(self):
-        response = message.StateResponse(endpoint_id='spa_test_1').get()
+        response = message.StateResponse(endpointId='spa_test_2').get()
         self.assertEqual(response['event']['header']['namespace'], 'Alexa')
         self.assertEqual(response['event']['header']['name'], 'StateReport')
         self.assertIn('endpoint', response['event'])
         self.assertIn('endpointId', response['event']['endpoint'])
         self.assertEqual(response['event']['endpoint']
-                         ['endpointId'], 'spa_test_1')
+                         ['endpointId'], 'spa_test_2')
 
         self.assertIn('context', response)
         self.assertIn('properties', response['context'])
 
     def test_begin_to_end(self):
         request = message.AlexaStateRequest(
-            endpointId='este-es-nuestro.access.token', token="0101").get()
+            endpointId='spa_test_2', token="0202").get()
         response = lambda_function.lambda_handler(request, None)
         self.assertIn('event', response)
         self.assertIn('header', response['event'])
         self.assertIn('namespace', response['event']['header'])
         self.assertEqual(response['event']['header']['namespace'], 'Alexa')
         self.assertEqual(response['event']['header']['name'], 'StateReport')
+        self.assertNotEqual(response['event']['header']['messageId'],
+                            request['directive']['header']['messageId'])
+        self.assertEqual(response['event']['header']['correlationToken'],
+                         request['directive']['header']['correlationToken'])
+        self.assertIn('endpointId', response['event']['endpoint'])
+        self.assertEqual(response['event']['endpoint']
+                         ['endpointId'], 'spa_test_2')
+        self.assertIn('context', response)
+        self.assertIn('properties', response['context'])
+        self.assertEqual(response['context']['properties'], [{
+            "namespace": "Alexa.ToggleController",
+            "instance": "Spa.Lights",
+            "name": "toggleState",
+            "value": "Off"
+        }])
 
 
 mock_server = Thread(target=ms.run_server)

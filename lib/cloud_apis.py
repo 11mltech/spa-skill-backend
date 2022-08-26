@@ -23,7 +23,8 @@ class DeviceCloud:
         self.endpoints = {
             "base": "spa",
             "discovery": "discovery",
-            "update_state": "updatestate"
+            "update_state": "updatestate",
+            "report_state": "reportstate"
         }
 
     # Check if user exists in server, using accessToken provided by directive
@@ -32,13 +33,16 @@ class DeviceCloud:
                        self.endpoints['discovery'], kwargs.get('token')])
         return self.get_request(url)
 
-    def update_device_state(self, endpoint_id, device, value, token):
+    def update_device_state(self, endpoint_id, instance, value, token):
+        device = instance.split(".")[1].lower()
         url = "/".join([self.url, self.endpoints['base'],
                        self.endpoints['update_state'], device, value, token])
         return self.get_request(url)
 
     def report_state(self, endpoint_id):
-        return [{'Instance': 'tu vieja'}]
+        url = "/".join([self.url, self.endpoints['base'],
+                       self.endpoints['report_state'], endpoint_id])
+        return self.get_request(url)
 
     def get_request(self, url):
         req = urllib.request.Request(url)

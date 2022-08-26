@@ -13,18 +13,22 @@ logger.setLevel(logging.INFO)
 client_id = 'alexa-id'
 client_secret = 'alexa-secret'
 
-namespace_request = {'Alexa.Authorization': 'AcceptGrant',
-                     'Alexa.Discovery': 'Discover',
-                     'Alexa.ToggleController': 'Toggle'}
+name_request = {'AcceptGrant': 'AcceptGrant',
+                     'Discover': 'Discover',
+                     'TurnOn': 'Toggle',
+                     'TurnOff': 'Toggle',
+                     'ReportState': 'ReportState'}
 
 
 class RequestHandler():
     def __init__(self, request):
         self.request = request
         self.server = DeviceCloud()
+        self.correlationToken = self.request['directive']['header']['correlationToken']
 
     def handle_request(self):
         return AlexaResponse().get()
+
 
 
 class AcceptGrant(RequestHandler):
@@ -78,14 +82,15 @@ class AcceptGrant(RequestHandler):
         else:
             # Build the success response to send to Alexa
             response = AlexaResponse(namespace="Alexa.Authorization",
-                                     name="AcceptGrant.Response")
+                                     name="AcceptGrant.Response",
+                                     correlationToken=self.correlationToken)
         return response.get()
 
 
 class Discover(RequestHandler):
     def handle_request(self):
         discovery_response = DiscoveryResponse(
-            namespace='Alexa.Discovery', name='Discover.Response')
+            namespace='Alexa.Discovery', name='Discover.Response', correlationToken=self.correlationToken)
 
         # Create the response and add capabilities.
         capability_alexa = discovery_response.create_payload_endpoint_capability()
@@ -122,15 +127,31 @@ class Discover(RequestHandler):
 
 
 class ReportState(RequestHandler):
+    def __init__(self, request):
+        super().__init__(request)
+        self.endpoint = self.request['directive']['endpoint']['endpointId']
+
     def handle_request(self):
+        
         properties = self.get_properties()
         context = {'properties': properties}
-        response = StateResponse(context = context)
+        response = StateResponse(
+            context=context, correlationToken=self.correlationToken, endpointId=self.endpoint)
         return response.get()
 
     def get_properties(self):
-        endpoint_id = self.request['directive']['endpoint']['endpointId']
-        properties = self.server.report_state(endpoint_id)
+        response = json.loads(self.server.report_state(self.endpoint))
+        properties = []
+        for key in response:
+            prop = {}
+            # TODO: de donde saco el namespace y el name? de la directiva no porque es reportState. En algun lado tiene que haber 
+            # un registro de las interfaces habilitadas para el endpoint. Deberian ser siempre las mismas. 
+            prop['instance'] = 'Spa.' + key.capitalize()
+            prop['namespace'] = 'Alexa.ToggleController'
+            prop['name'] = 'toggleState'
+            prop['value'] = response[key].capitalize()
+            properties.append(prop)
+        
         return properties
 
 
@@ -139,17 +160,11 @@ class Toggle(RequestHandler):
         endpoint_id = self.request['directive']['endpoint']['endpointId']
         instance = self.request['directive']['header']['instance']
         token = self.request['directive']['endpoint']['scope']['token']
-        correlation_token = self.request['directive']['header']['correlationToken']
         value = self.request['directive']['header']['name']
-
-        if instance == 'Spa.Lights':
-            device = 'lights'
-        else:
-            device = 'Unmaped device'
 
         try:
             response = json.loads(
-                self.server.update_device_state(endpoint_id, device, value, token))
+                self.server.update_device_state(endpoint_id, instance, value, token))
         except HTTPError:
             return AlexaResponse(
                 namespace='Alexa.ToggleController',
@@ -157,7 +172,7 @@ class Toggle(RequestHandler):
                 payload={'type': 'HTTP_ERROR', 'message': 'Got HTTPError for directive request. Token not found'}).get()
 
         toggle_response = AlexaResponse(
-            namespace='Alexa', name='Response', token=token, correlation_token=correlation_token)
+            namespace='Alexa', name='Response', token=token, correlationToken=self.correlationToken)
         toggle_response.add_context_property(namespace="Alexa.ToggleController",
                                              instance=instance, name='toggleState', value=response['status']['state'])
         return toggle_response.get()
@@ -178,9 +193,9 @@ class RequestFactory():
             return ErrorResponse(typ='INVALID_DIRECTIVE', message='This skill only supports Smart Home API version 3').get()
 
         # Create handler for directive
-        namespace = request['directive']['header']['namespace']
+        name = request['directive']['header']['name']
         try:
-            targetclass = namespace_request[namespace]
+            targetclass = name_request[name]
         except KeyError:
             return ErrorResponse(typ='INVALID_DIRECTIVE', message='Unimplemented interface.').get()
         return globals()[targetclass](request).handle_request()

@@ -33,14 +33,13 @@ class AlexaResponse:
                     "type": "BearerToken",
                     "token": kwargs.get('token', 'INVALID')
                 },
-                "endpointId": kwargs.get('endpoint_id', 'INVALID')
+                "endpointId": kwargs.get('endpointId', 'INVALID')
             },
             'payload': kwargs.get('payload', {})
         }
 
-        if 'correlation_token' in kwargs:
-            self.event['header']['correlation_token'] = kwargs.get(
-                'correlation_token', 'INVALID')
+        self.event['header']['correlationToken'] = kwargs.get(
+            'correlationToken', 'INVALID')
 
         if 'cookie' in kwargs:
             self.event['endpoint']['cookie'] = kwargs.get('cookie', '{}')
@@ -60,9 +59,9 @@ class AlexaResponse:
 
         self.cookies[key] = value
 
-    def add_payload_endpoint(self, endpoint_id, **kwargs):
+    def add_payload_endpoint(self, endpointId, **kwargs):
         self.payload_endpoints.append(
-            self.create_payload_endpoint(endpoint_id, **kwargs))
+            self.create_payload_endpoint(endpointId, **kwargs))
 
     def create_context_property(self, **kwargs):
         return {
@@ -74,7 +73,7 @@ class AlexaResponse:
             'uncertaintyInMilliseconds': kwargs.get('uncertainty_in_milliseconds', 0)
         }
 
-    def create_payload_endpoint(self, endpoint_id, **kwargs):
+    def create_payload_endpoint(self, endpointId, **kwargs):
         # Return the proper structure expected for the endpoint.
         # All discovery responses must include the additionAttributes
         additionalAttributes = {
@@ -86,7 +85,7 @@ class AlexaResponse:
             'capabilities': kwargs.get('capabilities', []),
             'description': kwargs.get('description', 'spa-description'),
             'displayCategories': kwargs.get('display_categories', ['THERMOSTAT', 'LIGHT']),
-            'endpointId': endpoint_id,
+            'endpointId': endpointId,
             'friendlyName': kwargs.get('friendly_name', 'ACC Spa'),
             'manufacturerName': kwargs.get('manufacturer_name', 'Applied Computer Controls')
         }
@@ -269,7 +268,7 @@ class AlexaRequest:
             "namespace": namespace,
             "name": name,
             "messageId": str(uuid.uuid4()),
-            "correlationToken": kwargs.get('correlationToken', None),
+            "correlationToken": kwargs.get('correlationToken', str(uuid.uuid4())),
             "payloadVersion": "3"
         }
         return self

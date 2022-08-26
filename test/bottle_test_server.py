@@ -49,6 +49,15 @@ def discovery(token=None):
         return 'Token does not match any existing spa'
 
 
+@app.route('/spa/reportstate/<endpoint>')
+def report_state(endpoint=None):
+    try:
+        return spa_state[endpoint]
+    except KeyError:
+        response.status = 400
+        return 'No such endpoint'
+
+
 @app.route('/spa/updatestate/lights/<value>/<token>')
 def device_update(value=None, token=None):
     try:
@@ -58,7 +67,10 @@ def device_update(value=None, token=None):
         return 'Token does not match any existing spa'
 
     try:
-        spa_state[spa] = 'Off' if value == 'TurnOff' else 'On'
+        if value == 'TurnOff':
+            spa_state[spa] = 'Off'
+        elif value == 'TurnOn':
+            spa_state[spa] = 'On'
         return {
             "status":
                 {
