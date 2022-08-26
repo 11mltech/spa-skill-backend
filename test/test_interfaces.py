@@ -163,7 +163,7 @@ class TestToggle(unittest.TestCase):
                     self.assertEqual(prop['value'], 'On')
         self.assertTrue(found)
 
-    def test_toggle(self):
+    def test_begin_to_end(self):
         request = message.AlexaToggleRequest(
             endpointId='spa_test_1', token="0101", action="TurnOn", instance='Spa.Lights').get()
         response = lambda_function.lambda_handler(request, None)
@@ -277,12 +277,16 @@ class TestReportState(unittest.TestCase):
                          ['endpointId'], 'spa_test_2')
         self.assertIn('context', response)
         self.assertIn('properties', response['context'])
-        self.assertEqual(response['context']['properties'], [{
-            "namespace": "Alexa.ToggleController",
-            "instance": "Spa.Lights",
-            "name": "toggleState",
-            "value": "Off"
-        }])
+        found = False
+        for prop in response['context']['properties']:
+            with suppress(KeyError):
+                if prop['instance'] == "Spa.Lights":
+                    found = True
+                    self.assertEqual(prop['namespace'],
+                                     'Alexa.ToggleController')
+                    self.assertEqual(prop['name'], 'toggleState')
+                    self.assertEqual(prop['value'], 'Off')
+        self.assertTrue(found)
 
 
 mock_server = Thread(target=ms.run_server)

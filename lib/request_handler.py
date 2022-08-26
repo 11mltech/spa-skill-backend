@@ -14,10 +14,10 @@ client_id = 'alexa-id'
 client_secret = 'alexa-secret'
 
 name_request = {'AcceptGrant': 'AcceptGrant',
-                     'Discover': 'Discover',
-                     'TurnOn': 'Toggle',
-                     'TurnOff': 'Toggle',
-                     'ReportState': 'ReportState'}
+                'Discover': 'Discover',
+                'TurnOn': 'Toggle',
+                'TurnOff': 'Toggle',
+                'ReportState': 'ReportState'}
 
 
 class RequestHandler():
@@ -28,7 +28,6 @@ class RequestHandler():
 
     def handle_request(self):
         return AlexaResponse().get()
-
 
 
 class AcceptGrant(RequestHandler):
@@ -130,28 +129,37 @@ class ReportState(RequestHandler):
     def __init__(self, request):
         super().__init__(request)
         self.endpoint = self.request['directive']['endpoint']['endpointId']
+        self.inst_namespace = {
+            "lights": "Alexa.ToggleController"
+        }
+        self.inst_name = {
+            "lights": "toggleState"
+        }
 
     def handle_request(self):
-        
-        properties = self.get_properties()
-        context = {'properties': properties}
-        response = StateResponse(
-            context=context, correlationToken=self.correlationToken, endpointId=self.endpoint)
-        return response.get()
+        state_response = StateResponse(
+            correlationToken=self.correlationToken, endpointId=self.endpoint)
+        status = json.loads(self.server.report_state(self.endpoint))
+        for key in status:
+            state_response.add_context_property(namespace=self.inst_namespace[key],
+                                                instance='Spa.'+key.capitalize(), name=self.inst_name[key], value=status[key])
 
+        return state_response.get()
+    
+    # TODO: unused
     def get_properties(self):
         response = json.loads(self.server.report_state(self.endpoint))
         properties = []
         for key in response:
             prop = {}
-            # TODO: de donde saco el namespace y el name? de la directiva no porque es reportState. En algun lado tiene que haber 
-            # un registro de las interfaces habilitadas para el endpoint. Deberian ser siempre las mismas. 
+            # TODO: de donde saco el namespace y el name? de la directiva no porque es reportState. En algun lado tiene que haber
+            # un registro de las interfaces habilitadas para el endpoint. Deberian ser siempre las mismas.
             prop['instance'] = 'Spa.' + key.capitalize()
             prop['namespace'] = 'Alexa.ToggleController'
             prop['name'] = 'toggleState'
             prop['value'] = response[key].capitalize()
             properties.append(prop)
-        
+
         return properties
 
 
