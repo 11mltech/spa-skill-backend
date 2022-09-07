@@ -11,7 +11,7 @@ logger.setLevel(logging.INFO)
 def get_utc_timestamp(seconds=None):
     return datetime.now(timezone.utc).isoformat()
 
-
+# this class remained practically unchanged from original example code. Childs were added
 class AlexaResponse:
 
     def __init__(self, **kwargs):
@@ -187,73 +187,10 @@ class ErrorResponse(AlexaResponse):
                          name=kwargs.get('name', 'ErrorResponse'),
                          messageId=self.messageId)
         self.event.pop('endpoint')
-# Usage: pass arguments as json or use methods to populate request. Pass scope method as parameter for set_endpoint
-
 
 class DiscoveryResponse(AlexaResponse):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-    def get_example(self):
-        return {
-            "event": {
-                "header": {
-                    "namespace": "Alexa.Discovery",
-                    "name": "Discover.Response",
-                    "messageId": "b1800c2e-f67b-43a3-972d-b26b3d028a05",
-                    "payloadVersion": "3"
-                },
-                "payload": {
-                    "endpoints": [
-                        {
-                            "capabilities": [
-                                {
-                                    "type": "AlexaInterface",
-                                    "interface": "Alexa",
-                                    "version": "3"
-                                },
-                                {
-                                    "type": "AlexaInterface",
-                                    "interface": "Alexa.ToggleController",
-                                    "version": "3",
-                                    "instance": "Spa.Lights",
-                                    "retrievable": True,
-                                    "properties": {
-                                            "supported": [
-                                                {
-                                                    "name": "toggleState"
-                                                }
-                                            ]
-                                    },
-                                    "capabilityResources": {
-                                        "friendlyNames": [
-                                            {
-                                                "@type": "text",
-                                                "value": {
-                                                    "text": "Spa lights",
-                                                    "locale": "en-US"
-                                                }
-                                            }]
-                                    }
-                                }
-                            ],
-                            "description": "spa-description",
-                            "displayCategories": [
-                                "THERMOSTAT",
-                            ],
-                            "endpointId": "spa_test_4",
-                            "friendlyName": "ACC Spa",
-                            "manufacturerName": "Applied Computer Controls",
-                            "additionalAttributes": {
-                                "manufacturer": "Applied Computer Controls",
-                                "model": "ACCSSPA-MODEL-NAME"
-                            }
-                        }
-                    ]
-                }
-            }
-        }
-
 
 class AlexaRequest:
     def __init__(self, **kwargs):

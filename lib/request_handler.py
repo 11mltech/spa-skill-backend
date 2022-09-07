@@ -13,6 +13,7 @@ logger.setLevel(logging.INFO)
 client_id = 'alexa-id'
 client_secret = 'alexa-secret'
 
+# values are the global names of class childs. Each request name maps to a request
 name_request = {'AcceptGrant': 'AcceptGrant',
                 'Discover': 'Discover',
                 'TurnOn': 'Toggle',
@@ -29,7 +30,7 @@ class RequestHandler():
     def handle_request(self):
         return AlexaResponse().get()
 
-
+# TODO: Not tested fully
 class AcceptGrant(RequestHandler):
     def handle_request(self):
         auth_code = self.request["directive"]["payload"]["grant"]["code"]
@@ -185,12 +186,9 @@ class Toggle(RequestHandler):
                                              instance=instance, name='toggleState', value=response['status']['state'])
         return toggle_response.get()
 
-# Error itself doesn't handle an interface request, but acts as an AlexaResponse wrapper for errors
-
-
+# Create requests using factory pattern
 class RequestFactory():
     def create_request_response(self, request):
-        messageId = request['directive']['header']['messageId']
         # Validate the request is an Alexa smart home directive.
         if 'directive' not in request:
             return ErrorResponse(typ='INVALID_DIRECTIVE', message='Directive not in message').get()
